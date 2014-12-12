@@ -1,0 +1,6 @@
+entityManager:
+  nearbyChunkRadius: 1
+  nearbyItemLimit: 400
+  nearbyCreatureLimit: 200
+  worldItemLimit: 3000
+  worldCreatureLimit: 2000

@@ -1,0 +1,17 @@
+name: MCPerf
+version: 1.0.0
+description: Passive performance ensurance utility
+load: STARTUP
+author: Zenexer
+main: com.earth2me.mcperf.MCPerfPlugin
+commands:
+  mcperf:
+    description: Reloads MCPerf's configuration from disk.
+    permission: mcperf.reload
+permissions:
+  mcperf.*:
+    description: Full MCPerf access
+    children:
+      mcperf.reload: true
+  mcperf.reload:
+    description: Gives access to /mcperf; used to reload configuration

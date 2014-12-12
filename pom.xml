@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.earth2me.mcperf</groupId>
+	<artifactId>mcperf</artifactId>
+	<version>1.0-SNAPSHOT</version>
+	<packaging>jar</packaging>
+	<url>https://github.com/Zenexer/MCPerf</url>
+
+	<licenses>
+		<license>
+			<name>Apache v2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0</url>
+		</license>
+	</licenses>
+
+	<scm>
+		<connection>scm:git:https://github.com/Zenexer/MCPerf</connection>
+		<developerConnection>scm:git:https://github.com/Zenexer/MCPerf</developerConnection>
+		<url>https://github.com/Zenexer/MCPerf</url>
+	</scm>
+
+	<repositories>
+		<repository>
+			<id>md5-bukkit-releases-repo</id>
+			<url>http://repo.md-5.net/content/repositories/repobo-rel</url>
+		</repository>
+		<repository>
+			<id>ess-repo</id>
+			<url>http://repo.ess3.net/content/groups/public</url>
+		</repository>
+	</repositories>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.bukkit</groupId>
+			<artifactId>bukkit</artifactId>
+			<version>1.7.9-R0.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.14.8</version>
+		</dependency>
+	</dependencies>
+</project>
