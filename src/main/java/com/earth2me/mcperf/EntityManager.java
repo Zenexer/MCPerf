@@ -3,6 +3,7 @@ package com.earth2me.mcperf;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
@@ -97,7 +98,14 @@ public final class EntityManager implements Listener
 		{
 			for (int offsetZ = -radius; offsetZ <= radius; offsetZ++)
 			{
-				entityCount += world.getChunkAt(x + offsetX, z + offsetZ).getEntities().length;
+				Chunk chunk = world.getChunkAt(x + offsetX, z + offsetZ);
+
+				if (chunk == null)
+				{
+					continue;
+				}
+
+				entityCount += chunk.getEntities().length;
 			}
 		}
 
