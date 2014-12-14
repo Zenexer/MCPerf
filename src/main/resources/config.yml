@@ -4,3 +4,7 @@ entityManager:
   nearbyCreatureLimit: 200
   worldItemLimit: 3000
   worldCreatureLimit: 2000
+validityManager:
+  maxLoreLines: 5
+  maxLoreLineLength: 64
+  maxNameLength: 64

@@ -11,6 +11,7 @@ import java.io.File;
 public class MCPerfPlugin extends JavaPlugin
 {
 	private EntityManager entityManager;
+	private ValidityManager validityManager;
 
 	private void ensureConfig()
 	{
@@ -38,18 +39,24 @@ public class MCPerfPlugin extends JavaPlugin
 		entityManager.setNearbyItemLimit(config.getInt("entityManager.nearbyItemLimit", entityManager.getNearbyItemLimit()));
 		entityManager.setWorldCreatureLimit(config.getInt("entityManager.worldCreatureLimit", entityManager.getWorldCreatureLimit()));
 		entityManager.setWorldItemLimit(config.getInt("entityManager.worldItemLimit", entityManager.getWorldItemLimit()));
+
+		validityManager.setMaxLoreLineLength(config.getInt("validityManager.maxLoreLineLength", validityManager.getMaxLoreLineLength()));
+		validityManager.setMaxLoreLines(config.getInt("validityManager.maxLoreLines", validityManager.getMaxLoreLines()));
+		validityManager.setMaxNameLength(config.getInt("validityManager.maxNameLength", validityManager.getMaxNameLength()));
 	}
 
 	@Override
 	public void onEnable()
 	{
 		entityManager = new EntityManager(getServer());
+		validityManager = new ValidityManager(getServer(), getLogger());
 
 		// Listeners must already be instantiated.
 		loadConfiguration();
 
 		PluginManager pluginManager = getServer().getPluginManager();
 		pluginManager.registerEvents(entityManager, this);
+		pluginManager.registerEvents(validityManager, this);
 
 		super.onEnable();
 	}
@@ -58,6 +65,7 @@ public class MCPerfPlugin extends JavaPlugin
 	public void onDisable()
 	{
 		entityManager = null;
+		validityManager = null;
 
 		super.onDisable();
 	}
