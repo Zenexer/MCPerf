@@ -3,19 +3,20 @@ package com.earth2me.mcperf;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.block.BlockState;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.HumanEntity;
-import org.bukkit.entity.Item;
-import org.bukkit.entity.ItemFrame;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -40,10 +41,13 @@ public final class ValidityManager implements Listener
 	@Getter
 	@Setter
 	private int maxNameLength = 64;
+	@Getter
+	@Setter
+	private boolean fullUnicodeAllowed = false;
 
-	private void onInvalid(String property, String sender)
+	private void onInvalid(String property, String sender, ItemStack itemStack)
 	{
-		logger.warning(String.format("Found item stack with invalid %s for %s", property, sender == null ? "(unknown)" : sender));
+		logger.warning(String.format("Found item stack %s:%d x%d with invalid %s for %s", itemStack.getType().toString(), itemStack.getDurability(), itemStack.getAmount(), property, sender == null ? "(unknown)" : sender));
 	}
 
 	public boolean isValid(ItemStack stack, HumanEntity sender)
@@ -64,6 +68,58 @@ public final class ValidityManager implements Listener
 		}
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
+	private boolean isValidDurability(Material material, short durability)
+	{
+		if (durability == 0 || material == null)
+		{
+			return true;
+		}
+
+		if (durability < 0)
+		{
+			return false;
+		}
+
+		switch (material)
+		{
+			case POTION:
+				return true;
+		}
+
+		if (durability <= getMaxDurability(material))
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	private static short getMaxDurability(Material material)
+	{
+		if (material.isBlock())
+		{
+			return 15;
+		}
+
+		switch (material)
+		{
+			case SKULL_ITEM:
+				return (short)Math.max(material.getMaxDurability(), 4);
+
+			case FLOWER_POT_ITEM:
+				return 13;
+
+			case CAULDRON_ITEM:
+				return 3;
+
+			case BREWING_STAND_ITEM:
+				return 7;
+		}
+
+		return material.getMaxDurability();
+	}
+
 	private boolean isValidUnsafe(ItemStack stack, String sender)
 	{
 		if (stack == null)
@@ -71,16 +127,19 @@ public final class ValidityManager implements Listener
 			return true;
 		}
 
-		if (stack.getAmount() < 1 || stack.getAmount() > stack.getMaxStackSize())
+		if (stack.getType() != Material.AIR)
 		{
-			onInvalid("amount", sender);
-			return false;
-		}
+			if (stack.getAmount() < 1 || stack.getAmount() > stack.getMaxStackSize())
+			{
+				onInvalid("amount", sender, stack);
+				return false;
+			}
 
-		if (stack.getDurability() < 0 || stack.getDurability() > stack.getType().getMaxDurability())
-		{
-			onInvalid("durability", sender);
-			return false;
+			if (!isValidDurability(stack.getType(), stack.getDurability()))
+			{
+				onInvalid("durability", sender, stack);
+				return false;
+			}
 		}
 
 		if (stack.hasItemMeta())
@@ -96,7 +155,7 @@ public final class ValidityManager implements Listener
 
 					if (level < enchantment.getStartLevel() || level > enchantment.getMaxLevel())
 					{
-						onInvalid("enchantment level", sender);
+						onInvalid("enchantment level", sender, stack);
 						return false;
 					}
 
@@ -104,7 +163,7 @@ public final class ValidityManager implements Listener
 					{
 						if (!enchantment.equals(e) && enchantment.conflictsWith(e))
 						{
-							onInvalid("enchantment combination", sender);
+							onInvalid("enchantment combination", sender, stack);
 							return false;
 						}
 					}
@@ -117,13 +176,13 @@ public final class ValidityManager implements Listener
 
 				if (name.length() > getMaxNameLength() || name.isEmpty())
 				{
-					onInvalid("display name length", sender);
+					onInvalid("display name length", sender, stack);
 					return false;
 				}
 
 				if (!isValid(name))
 				{
-					onInvalid("display name text", sender);
+					onInvalid("display name text", sender, stack);
 					return false;
 				}
 			}
@@ -134,7 +193,7 @@ public final class ValidityManager implements Listener
 
 				if (lore.size() > getMaxLoreLines())
 				{
-					onInvalid("lore line count", sender);
+					onInvalid("lore line count", sender, stack);
 					return false;
 				}
 
@@ -142,13 +201,13 @@ public final class ValidityManager implements Listener
 				{
 					if (line.length() > getMaxLoreLineLength())
 					{
-						onInvalid("lore line length", sender);
+						onInvalid("lore line length", sender, stack);
 						return false;
 					}
 
 					if (!isValid(line))
 					{
-						onInvalid("lore text", sender);
+						onInvalid("lore text", sender, stack);
 						return false;
 					}
 				}
@@ -158,7 +217,7 @@ public final class ValidityManager implements Listener
 		return true;
 	}
 
-	public static boolean isValid(String text)
+	public boolean isValid(String text)
 	{
 		if (text == null || text.isEmpty())
 		{
@@ -185,6 +244,11 @@ public final class ValidityManager implements Listener
 			}
 
 			// Process as UTF-16
+
+			if (!isFullUnicodeAllowed())
+			{
+				return false;
+			}
 
 			if (c >= 0xD800 && c <= 0xDBFF)
 			{
@@ -238,12 +302,56 @@ public final class ValidityManager implements Listener
 		}
 	}
 
-	@EventHandler(priority = EventPriority.LOWEST)
+	@EventHandler(priority = EventPriority.LOW)
 	public void onPlayerDropItem(PlayerDropItemEvent event)
 	{
-		if (!event.isCancelled() && !isValid(event.getItemDrop().getItemStack(), event.getPlayer()))
+		try
 		{
-			event.setCancelled(true);
+			if (!event.isCancelled() && !isValid(event.getItemDrop().getItemStack(), event.getPlayer()))
+			{
+				event.setCancelled(true);
+			}
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	@EventHandler(priority = EventPriority.HIGHEST)
+	public void onItemSpawn(ItemSpawnEvent event)
+	{
+		try
+		{
+			if (!event.isCancelled() && !isValid(event.getEntity().getItemStack(), (HumanEntity)null))
+			{
+				event.setCancelled(true);
+			}
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerLogin(PlayerLoginEvent event)
+	{
+		try
+		{
+			Player player = event.getPlayer();
+
+			if (!isValid(player.getItemInHand(), player))
+			{
+				player.setItemInHand(null);
+			}
+
+			validate(player.getInventory(), player);
+			validate(player.getEnderChest(), player);
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
 		}
 	}
 

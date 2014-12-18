@@ -8,3 +8,4 @@ validityManager:
   maxLoreLines: 5
   maxLoreLineLength: 64
   maxNameLength: 64
+  fullUnicodeAllowed: false

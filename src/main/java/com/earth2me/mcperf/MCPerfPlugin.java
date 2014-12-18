@@ -43,6 +43,7 @@ public class MCPerfPlugin extends JavaPlugin
 		validityManager.setMaxLoreLineLength(config.getInt("validityManager.maxLoreLineLength", validityManager.getMaxLoreLineLength()));
 		validityManager.setMaxLoreLines(config.getInt("validityManager.maxLoreLines", validityManager.getMaxLoreLines()));
 		validityManager.setMaxNameLength(config.getInt("validityManager.maxNameLength", validityManager.getMaxNameLength()));
+		validityManager.setFullUnicodeAllowed(config.getBoolean("validityManager.fullUnicodeAllowed", validityManager.isFullUnicodeAllowed()));
 	}
 
 	@Override
