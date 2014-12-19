@@ -1,17 +1,28 @@
 package com.earth2me.mcperf;
 
+import lombok.Getter;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class MCPerfPlugin extends JavaPlugin
 {
+	@Getter
 	private EntityManager entityManager;
+	@Getter
 	private ValidityManager validityManager;
+	@Getter
+	private MonitorManager monitorManager;
+
+	private final List<Listener> listeners = new ArrayList<>();
 
 	private void ensureConfig()
 	{
@@ -49,15 +60,17 @@ public class MCPerfPlugin extends JavaPlugin
 	@Override
 	public void onEnable()
 	{
-		entityManager = new EntityManager(getServer());
-		validityManager = new ValidityManager(getServer(), getLogger());
+		listeners.addAll(Arrays.asList(
+			entityManager = new EntityManager(getServer(), getLogger(), this),
+			validityManager = new ValidityManager(getServer(), getLogger()),
+			monitorManager = new MonitorManager(getServer(), getLogger())
+		));
 
 		// Listeners must already be instantiated.
 		loadConfiguration();
 
 		PluginManager pluginManager = getServer().getPluginManager();
-		pluginManager.registerEvents(entityManager, this);
-		pluginManager.registerEvents(validityManager, this);
+		listeners.forEach(listener -> pluginManager.registerEvents(listener, this));
 
 		super.onEnable();
 	}
@@ -65,8 +78,7 @@ public class MCPerfPlugin extends JavaPlugin
 	@Override
 	public void onDisable()
 	{
-		entityManager = null;
-		validityManager = null;
+		listeners.clear();
 
 		super.onDisable();
 	}
