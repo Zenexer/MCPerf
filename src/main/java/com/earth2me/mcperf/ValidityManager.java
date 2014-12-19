@@ -84,6 +84,7 @@ public final class ValidityManager implements Listener
 		switch (material)
 		{
 			case POTION:
+			case MAP:
 				return true;
 		}
 
@@ -127,20 +128,21 @@ public final class ValidityManager implements Listener
 			return true;
 		}
 
-		if (stack.getType() != Material.AIR)
-		{
-			if (stack.getAmount() < 1 || stack.getAmount() > stack.getMaxStackSize())
+		//if (stack.getType() != Material.AIR)
+		//{
+			/*if (stack.getAmount() < 0 || stack.getAmount() > stack.getMaxStackSize())
 			{
 				onInvalid("amount", sender, stack);
 				return false;
-			}
+			}*/
 
-			if (!isValidDurability(stack.getType(), stack.getDurability()))
+			// Too problematic; disable for now
+			/*if (!isValidDurability(stack.getType(), stack.getDurability()))
 			{
 				onInvalid("durability", sender, stack);
 				return false;
-			}
-		}
+			}*/
+		//}
 
 		if (stack.hasItemMeta())
 		{
