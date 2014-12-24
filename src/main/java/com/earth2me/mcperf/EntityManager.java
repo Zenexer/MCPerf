@@ -260,9 +260,14 @@ public final class EntityManager implements Listener
 		{
 			for (int offsetZ = -radius; offsetZ <= radius; offsetZ++)
 			{
+				if (!world.isChunkLoaded(x + offsetX, z + offsetZ))
+				{
+					continue;
+				}
+
 				Chunk chunk = world.getChunkAt(x + offsetX, z + offsetZ);
 
-				if (chunk == null)
+				if (chunk == null || !chunk.isLoaded())
 				{
 					continue;
 				}
