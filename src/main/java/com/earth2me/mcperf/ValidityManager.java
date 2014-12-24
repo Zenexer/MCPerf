@@ -44,6 +44,9 @@ public final class ValidityManager implements Listener
 	@Getter
 	@Setter
 	private boolean fullUnicodeAllowed = false;
+	@Getter
+	@Setter
+	private boolean enchantmentCheckingEnabled = false;
 
 	private void onInvalid(String property, String sender, ItemStack itemStack)
 	{
@@ -148,7 +151,7 @@ public final class ValidityManager implements Listener
 		{
 			ItemMeta meta = stack.getItemMeta();
 
-			if (meta.hasEnchants())
+			if (isEnchantmentCheckingEnabled() && meta.hasEnchants())
 			{
 				for (Map.Entry<Enchantment, Integer> kv : stack.getEnchantments().entrySet())
 				{

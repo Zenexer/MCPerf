@@ -9,3 +9,4 @@ validityManager:
   maxLoreLineLength: 64
   maxNameLength: 64
   fullUnicodeAllowed: false
+  enchantmentCheckingEnabled: false

@@ -55,15 +55,16 @@ public class MCPerfPlugin extends JavaPlugin
 		validityManager.setMaxLoreLines(config.getInt("validityManager.maxLoreLines", validityManager.getMaxLoreLines()));
 		validityManager.setMaxNameLength(config.getInt("validityManager.maxNameLength", validityManager.getMaxNameLength()));
 		validityManager.setFullUnicodeAllowed(config.getBoolean("validityManager.fullUnicodeAllowed", validityManager.isFullUnicodeAllowed()));
+		validityManager.setEnchantmentCheckingEnabled(config.getBoolean("validityManager.enchantmentCheckingEnabled", validityManager.isEnchantmentCheckingEnabled()));
 	}
 
 	@Override
 	public void onEnable()
 	{
 		listeners.addAll(Arrays.asList(
+			monitorManager = new MonitorManager(getServer(), getLogger()),
 			entityManager = new EntityManager(getServer(), getLogger(), this),
-			validityManager = new ValidityManager(getServer(), getLogger()),
-			monitorManager = new MonitorManager(getServer(), getLogger())
+			validityManager = new ValidityManager(getServer(), getLogger())
 		));
 
 		// Listeners must already be instantiated.
