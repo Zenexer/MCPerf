@@ -21,6 +21,8 @@ public class MCPerfPlugin extends JavaPlugin
 	private ValidityManager validityManager;
 	@Getter
 	private MonitorManager monitorManager;
+	@Getter
+	private SecurityManager securityManager;
 
 	private final List<Listener> listeners = new ArrayList<>();
 
@@ -62,6 +64,7 @@ public class MCPerfPlugin extends JavaPlugin
 	public void onEnable()
 	{
 		listeners.addAll(Arrays.asList(
+			securityManager = new SecurityManager(getServer(), getLogger()),
 			monitorManager = new MonitorManager(getServer(), getLogger()),
 			entityManager = new EntityManager(getServer(), getLogger(), this),
 			validityManager = new ValidityManager(getServer(), getLogger())
