@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.earth2me.mcperf</groupId>
+	<groupId>com.earth2me</groupId>
 	<artifactId>mcperf</artifactId>
 	<version>1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
@@ -25,8 +25,8 @@
 
 	<repositories>
 		<repository>
-			<id>md5-bukkit-releases-repo</id>
-			<url>http://repo.md-5.net/content/repositories/repobo-rel</url>
+			<id>spigot-repo</id>
+			<url>http://hub.spigotmc.org/nexus/content/groups/public</url>
 		</repository>
 		<repository>
 			<id>ess-repo</id>
