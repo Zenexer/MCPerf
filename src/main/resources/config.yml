@@ -6,7 +6,7 @@ entityManager:
   worldCreatureLimit: 2000
 validityManager:
   maxLoreLines: 5
-  maxLoreLineLength: 64
-  maxNameLength: 64
+  maxLoreLineLength: 127
+  maxNameLength: 63
   fullUnicodeAllowed: false
   enchantmentCheckingEnabled: false

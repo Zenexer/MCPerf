@@ -37,10 +37,10 @@ public final class ValidityManager implements Listener
 	private int maxLoreLines = 5;
 	@Getter
 	@Setter
-	private int maxLoreLineLength = 64;
+	private int maxLoreLineLength = 127;
 	@Getter
 	@Setter
-	private int maxNameLength = 64;
+	private int maxNameLength = 63;
 	@Getter
 	@Setter
 	private boolean fullUnicodeAllowed = false;
@@ -48,9 +48,9 @@ public final class ValidityManager implements Listener
 	@Setter
 	private boolean enchantmentCheckingEnabled = false;
 
-	private void onInvalid(String property, String sender, ItemStack itemStack)
+	private void onInvalid(String propertyFormat, String sender, ItemStack itemStack, Object... propertyArgs)
 	{
-		logger.warning(String.format("Found item stack %s:%d x%d with invalid %s for %s", itemStack.getType().toString(), itemStack.getDurability(), itemStack.getAmount(), property, sender == null ? "(unknown)" : sender));
+		logger.warning(String.format("Found item stack %s:%d x%d with invalid %s for %s", itemStack.getType().toString(), itemStack.getDurability(), itemStack.getAmount(), String.format(propertyFormat, propertyArgs), sender == null ? "(unknown)" : sender));
 	}
 
 	public boolean isValid(ItemStack stack, HumanEntity sender)
@@ -160,7 +160,7 @@ public final class ValidityManager implements Listener
 
 					if (level < enchantment.getStartLevel() || level > enchantment.getMaxLevel())
 					{
-						onInvalid("enchantment level", sender, stack);
+						onInvalid("enchantment level (%d)", sender, stack, level);
 						return false;
 					}
 
@@ -168,7 +168,7 @@ public final class ValidityManager implements Listener
 					{
 						if (!enchantment.equals(e) && enchantment.conflictsWith(e))
 						{
-							onInvalid("enchantment combination", sender, stack);
+							onInvalid("enchantment combination (%s + %s)", sender, stack, enchantment.getName(), e.getName());
 							return false;
 						}
 					}
@@ -181,7 +181,7 @@ public final class ValidityManager implements Listener
 
 				if (name.length() > getMaxNameLength() || name.isEmpty())
 				{
-					onInvalid("display name length", sender, stack);
+					onInvalid("display name length (%d)", sender, stack, name.length());
 					return false;
 				}
 
@@ -198,15 +198,16 @@ public final class ValidityManager implements Listener
 
 				if (lore.size() > getMaxLoreLines())
 				{
-					onInvalid("lore line count", sender, stack);
+					onInvalid("lore line count (%d)", sender, stack, lore.size());
 					return false;
 				}
 
+				int i = 1;
 				for (String line : lore)
 				{
 					if (line.length() > getMaxLoreLineLength())
 					{
-						onInvalid("lore line length", sender, stack);
+						onInvalid("lore line length (%d, line %d)", sender, stack, line.length(), i);
 						return false;
 					}
 
@@ -215,6 +216,8 @@ public final class ValidityManager implements Listener
 						onInvalid("lore text", sender, stack);
 						return false;
 					}
+
+					i++;
 				}
 			}
 		}
