@@ -96,6 +96,7 @@ public final class EntityManager implements Listener
 		List<Entity> entityList = location.getWorld().getEntities();
 		final Entity[] entities = entityList.toArray(new Entity[entityList.size()]);  // Clone before async
 
+		logger.warning(String.format("Too many entities in world [%s]; running cleanup", location.getWorld().getName()));
 		cleanup(entities, limit);
 	}
 
@@ -123,6 +124,7 @@ public final class EntityManager implements Listener
 			}
 		}
 
+		logger.warning(String.format("Too many entities at (%s, %d, %d); running cleanup", world.getName(), x << 4, z << 4));
 		cleanup(Iterables.toArray(entities, Entity.class), limit);
 	}
 
@@ -138,6 +140,8 @@ public final class EntityManager implements Listener
 					// Shouldn't typically happen
 					return;
 				}
+
+				logger.warning(String.format("Top problem entity type: %s", problemTypes.get(0).name()));
 
 				if (problemTypes.get(0) == EntityType.PLAYER)
 				{

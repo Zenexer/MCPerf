@@ -5,6 +5,7 @@ entityManager:
   worldItemLimit: 3000
   worldCreatureLimit: 2000
 validityManager:
+  enabled: false
   maxLoreLines: 5
   maxLoreLineLength: 127
   maxNameLength: 63

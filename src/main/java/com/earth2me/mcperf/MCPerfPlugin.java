@@ -43,8 +43,6 @@ public class MCPerfPlugin extends JavaPlugin
 
 	private void loadConfiguration()
 	{
-		ensureConfig();
-
 		FileConfiguration config = getConfig();
 
 		entityManager.setNearbyChunkRadius(config.getInt("entityManager.nearbyChunkRadius", entityManager.getNearbyChunkRadius()));
@@ -53,6 +51,7 @@ public class MCPerfPlugin extends JavaPlugin
 		entityManager.setWorldCreatureLimit(config.getInt("entityManager.worldCreatureLimit", entityManager.getWorldCreatureLimit()));
 		entityManager.setWorldItemLimit(config.getInt("entityManager.worldItemLimit", entityManager.getWorldItemLimit()));
 
+		validityManager.setEnabled(config.getBoolean("validityManager.enabled", validityManager.isEnabled()));
 		validityManager.setMaxLoreLineLength(config.getInt("validityManager.maxLoreLineLength", validityManager.getMaxLoreLineLength()));
 		validityManager.setMaxLoreLines(config.getInt("validityManager.maxLoreLines", validityManager.getMaxLoreLines()));
 		validityManager.setMaxNameLength(config.getInt("validityManager.maxNameLength", validityManager.getMaxNameLength()));
@@ -63,6 +62,8 @@ public class MCPerfPlugin extends JavaPlugin
 	@Override
 	public void onEnable()
 	{
+		ensureConfig();
+
 		listeners.addAll(Arrays.asList(
 			securityManager = new SecurityManager(getServer(), getLogger()),
 			monitorManager = new MonitorManager(getServer(), getLogger()),

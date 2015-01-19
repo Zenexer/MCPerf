@@ -34,6 +34,9 @@ public final class ValidityManager implements Listener
 
 	@Getter
 	@Setter
+	private boolean enabled = false;
+	@Getter
+	@Setter
 	private int maxLoreLines = 5;
 	@Getter
 	@Setter
@@ -291,12 +294,22 @@ public final class ValidityManager implements Listener
 	@EventHandler(priority = EventPriority.LOWEST)
 	public void onInventoryOpen(InventoryOpenEvent event)
 	{
+		if (!isEnabled())
+		{
+			return;
+		}
+
 		validate(event.getInventory(), event.getPlayer());
 	}
 
 	@EventHandler(priority = EventPriority.LOWEST)
 	public void onInventoryCreative(InventoryCreativeEvent event)
 	{
+		if (!isEnabled())
+		{
+			return;
+		}
+
 		if (!isValid(event.getCursor(), event.getWhoClicked()))
 		{
 			try
@@ -313,6 +326,11 @@ public final class ValidityManager implements Listener
 	@EventHandler(priority = EventPriority.LOW)
 	public void onPlayerDropItem(PlayerDropItemEvent event)
 	{
+		if (!isEnabled())
+		{
+			return;
+		}
+
 		try
 		{
 			if (!event.isCancelled() && !isValid(event.getItemDrop().getItemStack(), event.getPlayer()))
@@ -329,6 +347,11 @@ public final class ValidityManager implements Listener
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onItemSpawn(ItemSpawnEvent event)
 	{
+		if (!isEnabled())
+		{
+			return;
+		}
+
 		try
 		{
 			if (!event.isCancelled() && !isValid(event.getEntity().getItemStack(), (HumanEntity)null))
@@ -345,6 +368,11 @@ public final class ValidityManager implements Listener
 	@EventHandler(priority = EventPriority.HIGH)
 	public void onPlayerLogin(PlayerLoginEvent event)
 	{
+		if (!isEnabled())
+		{
+			return;
+		}
+
 		try
 		{
 			Player player = event.getPlayer();
@@ -366,6 +394,11 @@ public final class ValidityManager implements Listener
 	@EventHandler(priority = EventPriority.LOWEST)
 	public void onChunkLoad(ChunkLoadEvent event)
 	{
+		if (!isEnabled())
+		{
+			return;
+		}
+
 		for (Entity entity : event.getChunk().getEntities())
 		{
 			if (entity.isEmpty())
