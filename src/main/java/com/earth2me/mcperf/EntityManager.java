@@ -137,6 +137,7 @@ public final class EntityManager implements Listener
 
 				if (problemTypes.isEmpty())
 				{
+					logger.warning("Assertion failed; couldn't find any entities after grouping and sorting");
 					// Shouldn't typically happen
 					return;
 				}
@@ -160,9 +161,9 @@ public final class EntityManager implements Listener
 			}
 			finally
 			{
-				// Run at most every 10 seconds.
+				// Run at most every 2 seconds.
 				// Synchronous is probably faster here.
-				server.getScheduler().scheduleSyncDelayedTask(plugin, () -> cleanupRunning.set(false), 200);
+				server.getScheduler().scheduleSyncDelayedTask(plugin, () -> cleanupRunning.set(false), 40);
 			}
 		});
 	}
@@ -204,16 +205,18 @@ public final class EntityManager implements Listener
 		return sorted.filter(new Predicate<Map.Entry<EntityType, Long>>()
 		{
 			private int removing = 0;
+			private boolean first = true;
 
 			@Override
 			public boolean test(Map.Entry<EntityType, Long> entry)
 			{
-				if (total - removing <= limit)
+				if (!first && total - removing <= limit)
 				{
 					return false;
 				}
 
 				removing += entry.getValue();
+				first = false;
 				return true;
 			}
 		}).map(Map.Entry::getKey).collect(Collectors.toList());
