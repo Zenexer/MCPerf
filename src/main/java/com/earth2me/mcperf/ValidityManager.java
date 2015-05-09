@@ -248,7 +248,7 @@ public final class ValidityManager implements Listener
 				return false;
 			}
 
-			if (c < 0x7F || c == '§')
+			if (c < 0x7F || c == '\u00a7')  // Section symbol
 			{
 				// Skip Unicode checks
 				continue;
