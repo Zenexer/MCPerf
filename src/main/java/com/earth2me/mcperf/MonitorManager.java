@@ -23,8 +23,8 @@ public class MonitorManager implements Listener
 	private final Server server;
 	private final Logger logger;
 
-	@EventHandler(priority = EventPriority.LOWEST)
-	public void onPlayerChat(PlayerChatEvent event)
+	@EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+	public void onPlayerChat(@SuppressWarnings("deprecation") PlayerChatEvent event)
 	{
 		String world = event.getPlayer().getWorld().getName();
 		String sender = event.getPlayer().getName();
@@ -32,7 +32,7 @@ public class MonitorManager implements Listener
 		String message = event.getMessage();
 		Set<Player> recipients = event.getRecipients();
 		int recipCount = recipients.size();
-		int totalCount = server.getOnlinePlayers().length;
+		int totalCount = server.getOnlinePlayers().size();
 
 		String format;
 		if (recipCount < totalCount)

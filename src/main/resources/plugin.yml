@@ -1,17 +1,35 @@
 name: MCPerf
-version: 1.0.0
-description: Passive performance ensurance utility
+version: 1.1.0
+description: 'Performance utility'
 load: STARTUP
 author: Zenexer
 main: com.earth2me.mcperf.MCPerfPlugin
 commands:
   mcperf:
-    description: Reloads MCPerf's configuration from disk.
+    description: "Reloads MCPerf's configuration from disk."
     permission: mcperf.reload
+  chans:
+    description: "Displays the plugin channels that a user's client has registered."
+    permission: mcperf.chans
+    usage: '/<command> * | <player> [player]...'
 permissions:
   mcperf.*:
-    description: Full MCPerf access
+    description: 'Full MCPerf access'
     children:
       mcperf.reload: true
+      mcperf.chans: true
+      mcperf.chans.all: true
   mcperf.reload:
-    description: Gives access to /mcperf; used to reload configuration
+    description: 'Gives access to /mcperf; used to reload configuration'
+  mcperf.chans.*:
+    description: 'Full /chans access'
+    children:
+      mcperf.chans: true
+      mcperf.chans.multiple: true
+      mcperf.chans.all: true
+  mcperf.chans:
+    description: 'Gives access to /chans; used to check what channels a user has registered'
+  mcperf.chans.multiple:
+    description: 'Gives access to /chans with more than one argument'
+  mcperf.chans.all:
+    description: 'Gives access to /chans *; used to scan the channels of every player on the server'

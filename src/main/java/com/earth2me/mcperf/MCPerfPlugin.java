@@ -23,6 +23,8 @@ public class MCPerfPlugin extends JavaPlugin
 	private MonitorManager monitorManager;
 	@Getter
 	private SecurityManager securityManager;
+	@Getter
+	private PluginMessageManager pluginMessageManager;
 
 	private final List<Listener> listeners = new ArrayList<>();
 
@@ -68,8 +70,10 @@ public class MCPerfPlugin extends JavaPlugin
 			securityManager = new SecurityManager(getServer(), getLogger()),
 			monitorManager = new MonitorManager(getServer(), getLogger()),
 			entityManager = new EntityManager(getServer(), getLogger(), this),
-			validityManager = new ValidityManager(getServer(), getLogger())
+			validityManager = new ValidityManager(getServer(), getLogger()),
+			pluginMessageManager = new PluginMessageManager(getServer(), getLogger(), this)
 		));
+		pluginMessageManager.register();
 
 		// Listeners must already be instantiated.
 		loadConfiguration();
@@ -85,6 +89,11 @@ public class MCPerfPlugin extends JavaPlugin
 	{
 		listeners.clear();
 
+		if (pluginMessageManager != null)
+		{
+			pluginMessageManager.unregister();
+		}
+
 		super.onDisable();
 	}
 
@@ -97,13 +106,20 @@ public class MCPerfPlugin extends JavaPlugin
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args)
 	{
-		if (!sender.hasPermission("mcperf.reload") && !sender.isOp())
+		switch (command.getName())
 		{
-			return false;
-		}
+			case "mcperf":
+				if (!sender.hasPermission("mcperf.reload") && !sender.isOp())
+				{
+					return false;
+				}
 
-		reload();
-		sender.sendMessage("MCPerf reloaded");
-		return true;
+				reload();
+				sender.sendMessage("MCPerf reloaded");
+				return true;
+
+			default:
+				return false;
+		}
 	}
 }
