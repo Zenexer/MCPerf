@@ -138,7 +138,7 @@ public class PluginMessageManager implements PluginMessageListener, Listener
 				.filter(java.util.Objects::nonNull);
 		}
 
-		Map<Player, Set<String>> playerChannels = players.collect(Collectors.toMap(Function.identity(), PluginMessageRecipient::getListeningPluginChannels));
+		Map<String, Set<String>> playerChannels = players.collect(Collectors.toMap(Player::getName, PluginMessageRecipient::getListeningPluginChannels));
 
 		if (playerChannels.isEmpty())
 		{
@@ -146,7 +146,7 @@ public class PluginMessageManager implements PluginMessageListener, Listener
 			return true;
 		}
 
-		List<Player> notListening = playerChannels.entrySet().stream()
+		List<String> notListening = playerChannels.entrySet().stream()
 			.filter(e -> e.getValue().isEmpty())
 			.map(Map.Entry::getKey)
 			.collect(Collectors.toList());
@@ -162,7 +162,7 @@ public class PluginMessageManager implements PluginMessageListener, Listener
 
 		playerChannels.entrySet().stream()
 			.filter(e -> !e.getValue().isEmpty())
-			.forEach(e -> sender.sendMessage(String.format("- %s: %s", e.getKey().getName(), Joiner.on(", ").join(e.getValue()))));
+			.forEach(e -> sender.sendMessage(String.format("- %s: %s", e.getKey(), Joiner.on(", ").join(e.getValue()))));
 		return true;
 	}
 
