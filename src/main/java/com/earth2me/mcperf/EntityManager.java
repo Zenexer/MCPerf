@@ -15,10 +15,10 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
-import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.plugin.Plugin;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +27,8 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
 
 @RequiredArgsConstructor
 public final class EntityManager implements Listener
@@ -51,6 +53,27 @@ public final class EntityManager implements Listener
 	private final Logger logger;
 	private final Plugin plugin;
 	private final AtomicBoolean cleanupRunning = new AtomicBoolean(false);
+
+	private static boolean isIgnoredEntityType(EntityType entityType)
+	{
+		// Much faster than testing the contents of a list.
+		switch (entityType)
+		{
+			case PLAYER:
+			case ITEM_FRAME:
+			case PAINTING:
+			case WEATHER:
+				return true;
+
+			default:
+				return false;
+		}
+	}
+
+	private static boolean isUnignoredEntity(Entity entity)
+	{
+		return !isIgnoredEntityType(entity.getType());
+	}
 
 	@EventHandler(priority = EventPriority.HIGH)
 	public void onCreatureSpawn(CreatureSpawnEvent event)
@@ -93,14 +116,26 @@ public final class EntityManager implements Listener
 
 	private void cleanupWorld(Location location, int limit)
 	{
-		List<Entity> entityList = location.getWorld().getEntities();
-		final Entity[] entities = entityList.toArray(new Entity[entityList.size()]);  // Clone before async
+		List<Entity> entities = getWorldEntities(location);
 
-		logger.warning(String.format("Too many entities in world [%s]; running cleanup", location.getWorld().getName()));
+		World world = location.getWorld();
+		int count = entities.size();
+		logger.warning(String.format("Too many entities (%d) in world [%s]; running cleanup", count, world.getName()));
+
 		cleanup(entities, limit);
 	}
 
-	private void cleanupNearby(Location location, int limit)
+	private List<Entity> getWorldEntities(Location location)
+	{
+		return getWorldEntities(location.getWorld());
+	}
+
+	private List<Entity> getWorldEntities(World world)
+	{
+		return world.getEntities();
+	}
+
+	private Iterable<Entity> getNearbyEntities(Location location)
 	{
 		World world = location.getWorld();
 		int x = location.getBlockX() >> 4;
@@ -124,16 +159,33 @@ public final class EntityManager implements Listener
 			}
 		}
 
-		logger.warning(String.format("Too many entities at (%s, %d, %d); running cleanup", world.getName(), x << 4, z << 4));
-		cleanup(Iterables.toArray(entities, Entity.class), limit);
+		return entities;
 	}
 
-	private void cleanup(Entity[] entities, int limit)
+	private void cleanupNearby(Location location, int limit)
+	{
+		Iterable<Entity> entities = getNearbyEntities(location);
+
+		World world = location.getWorld();
+		int x = location.getBlockX() >> 4;
+		int z = location.getBlockZ() >> 4;
+		logger.warning(String.format("Too many entities at (%s, %d, %d); running cleanup", world.getName(), x << 4, z << 4));
+
+		cleanup(Iterables.unmodifiableIterable(entities), limit);
+	}
+
+	private static Stream<Entity> filteredEntityStream(Iterable<Entity> entities)
+	{
+		return StreamSupport.stream(entities.spliterator(), true)
+			.filter(EntityManager::isUnignoredEntity);
+	}
+
+	private void cleanup(Iterable<Entity> entities, int limit)
 	{
 		server.getScheduler().runTaskAsynchronously(plugin, () -> {
 			try
 			{
-				List<EntityType> problemTypes = getProblematicEntityTypes(Arrays.stream(entities), limit);
+				List<EntityType> problemTypes = getProblematicEntityTypes(filteredEntityStream(entities), limit);
 
 				if (problemTypes.isEmpty())
 				{
@@ -152,10 +204,13 @@ public final class EntityManager implements Listener
 				problemTypes.remove(EntityType.PLAYER);
 
 				// Evaluate immediately
-				final Entity[] toRemove = Arrays.stream(entities).filter(entity -> problemTypes.contains(entity.getType())).toArray(Entity[]::new);
+				final Entity[] toRemove = filteredEntityStream(entities).filter(entity -> problemTypes.contains(entity.getType())).toArray(Entity[]::new);
 
 				server.getScheduler().callSyncMethod(plugin, () -> {
-					Arrays.stream(toRemove).forEach(Entity::remove);
+					for (Entity entity : toRemove)
+					{
+						entity.remove();
+					}
 					return null;
 				});
 			}
@@ -171,18 +226,9 @@ public final class EntityManager implements Listener
 	private static int getPriority(EntityType entityType)
 	{
 		// The algorithm will delete entity types with lower priority values first.
-		// It's best to avoid adding values here, if possible.
+		// It's best to avoid adding values here; it can really mess things up.
 		switch (entityType)
 		{
-			case WEATHER:
-				return 1000;
-
-			case ITEM_FRAME:
-				return 100;
-
-			case PAINTING:
-				return 90;
-
 			default:
 				return 0;
 		}
@@ -226,7 +272,7 @@ public final class EntityManager implements Listener
 	private boolean canSpawn(final Location location, int nearbyLimit, int worldLimit)
 	{
 		// We want nearby cleanup to take priority, so check locally first.
-		int nearbyEntities = countNearbyEntities(location);
+		int nearbyEntities = countNearbyEntities(location, nearbyLimit);
 		if (nearbyEntities >= nearbyLimit)
 		{
 			if (!cleanupRunning.getAndSet(true))
@@ -236,7 +282,7 @@ public final class EntityManager implements Listener
 			return false;
 		}
 
-		int worldEntities = countWorldEntities(location);
+		int worldEntities = countWorldEntities(location, worldLimit);
 		if (worldEntities >= worldLimit)
 		{
 			if (!cleanupRunning.getAndSet(true))
@@ -249,40 +295,29 @@ public final class EntityManager implements Listener
 		return true;
 	}
 
-	private int countWorldEntities(Location location)
+	private int countEntities(Iterable<Entity> entities, int limit)
 	{
-		return location.getWorld().getEntities().size();
-	}
-
-	private int countNearbyEntities(Location location)
-	{
-		World world = location.getWorld();
-		int x = location.getBlockX() >> 4;
-		int z = location.getBlockZ() >> 4;
-		int radius = getNearbyChunkRadius();
-
-		int entityCount = 0;
-
-		for (int offsetX = -radius; offsetX <= radius; offsetX++)
+		// Attempt quick count when entities is of type List<T> or similar
+		if (entities instanceof Collection)
 		{
-			for (int offsetZ = -radius; offsetZ <= radius; offsetZ++)
+			int count = ((Collection<Entity>)entities).size();
+
+			if (count < limit)
 			{
-				if (!world.isChunkLoaded(x + offsetX, z + offsetZ))
-				{
-					continue;
-				}
-
-				Chunk chunk = world.getChunkAt(x + offsetX, z + offsetZ);
-
-				if (chunk == null || !chunk.isLoaded())
-				{
-					continue;
-				}
-
-				entityCount += chunk.getEntities().length;
+				return count;
 			}
 		}
 
-		return entityCount;
+		return (int)filteredEntityStream(entities).count();
+	}
+
+	private int countWorldEntities(Location location, int limit)
+	{
+		return countEntities(getWorldEntities(location), limit);
+	}
+
+	private int countNearbyEntities(Location location, int limit)
+	{
+		return countEntities(getNearbyEntities(location), limit);
 	}
 }

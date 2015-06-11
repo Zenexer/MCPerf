@@ -4,6 +4,59 @@ description: 'Performance utility'
 load: STARTUP
 author: Zenexer
 main: com.earth2me.mcperf.MCPerfPlugin
+loadbefore:
+  # We need to load before all other plugins, if at all possible.
+  - Vault
+  - Essentials
+  - MilkyKore
+  - TownyChat
+  - Towny
+  - zPermissions
+  - EssentialsChat
+  - Skript
+  - mcMMO
+  - Buycraft
+  - WorldGuard
+  - WorldEdit
+  - floAuction
+  - Factions
+  - RedeemMCMMO
+  - NoCheatPlus
+  - CompatNoCheatPlus
+  - Multiverse-Core
+  - PlotSquared
+  - BanManager
+  - AutoMessage
+  - LilyPad-Connect
+  - SurvivalGames
+  - Puffix
+  - kits
+  - AntiAutoSoup
+  - ColoredTags
+  - CleanroomGenerator
+  - AsyncWorldEditInjector
+  - PistonBlocker
+  - WorldBorder
+  - Lockette
+  - AsyncWorldEdit
+  - EchoPet
+  - SkyBlock
+  - LilyPad-Portal
+  - WhatIsIt
+  - LibsDisguises
+  - JustShop
+  - SilkSpawners
+  - XenLink
+  - WorldReset
+  - PlotMe-DefaultGenerator
+  - CowClash
+  - AntiAura
+  - VoidWorld
+  - SpectatorPlus
+  - ScheduledRestarter
+  - Tab
+  - SkyWarsReloaded
+  - HolographicDisplays
 commands:
   mcperf:
     description: "Reloads MCPerf's configuration from disk."
