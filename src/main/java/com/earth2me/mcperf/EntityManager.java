@@ -144,19 +144,15 @@ public final class EntityManager implements Listener
 
 		Iterable<Entity> entities = Collections.emptyList();
 
-		for (int offsetX = -radius; offsetX <= radius; offsetX++)
+		Chunk[] loadedChunks = world.getLoadedChunks();
+		Chunk[] nearbyChunks = Arrays.stream(loadedChunks).filter(c ->
+			c.getX() >= x - radius && c.getX() <= x + radius &&
+			c.getZ() >= z - radius && c.getZ() <= z + radius
+		).toArray(Chunk[]::new);
+
+		for (Chunk chunk : nearbyChunks)
 		{
-			for (int offsetZ = -radius; offsetZ <= radius; offsetZ++)
-			{
-				Chunk chunk = world.getChunkAt(x + offsetX, z + offsetZ);
-
-				if (chunk == null)
-				{
-					continue;
-				}
-
-				entities = Iterables.concat(entities, Arrays.asList(chunk.getEntities()));
-			}
+			entities = Iterables.concat(entities, Arrays.asList(chunk.getEntities()));
 		}
 
 		return entities;
