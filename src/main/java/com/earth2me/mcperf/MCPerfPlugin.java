@@ -1,5 +1,6 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.validity.ValidityConfiguration;
 import lombok.Getter;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -53,12 +54,7 @@ public class MCPerfPlugin extends JavaPlugin
 		entityManager.setWorldCreatureLimit(config.getInt("entityManager.worldCreatureLimit", entityManager.getWorldCreatureLimit()));
 		entityManager.setWorldItemLimit(config.getInt("entityManager.worldItemLimit", entityManager.getWorldItemLimit()));
 
-		validityManager.setEnabled(config.getBoolean("validityManager.enabled", validityManager.isEnabled()));
-		validityManager.setMaxLoreLineLength(config.getInt("validityManager.maxLoreLineLength", validityManager.getMaxLoreLineLength()));
-		validityManager.setMaxLoreLines(config.getInt("validityManager.maxLoreLines", validityManager.getMaxLoreLines()));
-		validityManager.setMaxNameLength(config.getInt("validityManager.maxNameLength", validityManager.getMaxNameLength()));
-		validityManager.setFullUnicodeAllowed(config.getBoolean("validityManager.fullUnicodeAllowed", validityManager.isFullUnicodeAllowed()));
-		validityManager.setEnchantmentCheckingEnabled(config.getBoolean("validityManager.enchantmentCheckingEnabled", validityManager.isEnchantmentCheckingEnabled()));
+		validityManager.setConfig(new ValidityConfiguration(config));
 	}
 
 	@Override

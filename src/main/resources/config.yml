@@ -11,3 +11,7 @@ validityManager:
   maxNameLength: 63
   fullUnicodeAllowed: false
   enchantmentCheckingEnabled: false
+  potionCheckingEnabled: false
+  splashPotionCheckingEnabled: false
+  splashPotionsBanned: false
+  zeroQuantityBanned: false
