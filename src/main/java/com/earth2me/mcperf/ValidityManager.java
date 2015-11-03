@@ -43,7 +43,7 @@ public final class ValidityManager implements Listener
 		registerMetaValidator(new GenericMetaValidator());
 	}
 
-	private void registerMetaValidator(MetaValidator validator)
+	private void registerMetaValidator(MetaValidator<? extends ItemMeta> validator)
 	{
 		metaValidators.put(validator.getMetaType(), validator);
 	}
@@ -198,6 +198,7 @@ public final class ValidityManager implements Listener
 			if (!event.isCancelled() && !isValid(event.getEntity().getItemStack(), (HumanEntity)null))
 			{
 				event.setCancelled(true);
+				event.getEntity().remove();
 			}
 		}
 		catch (Exception e)

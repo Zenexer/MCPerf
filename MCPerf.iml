@@ -11,8 +11,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: org.bukkit:bukkit:1.7.10-R0.1-SNAPSHOT" level="project" />
-    <orderEntry type="library" name="Maven: org.spigotmc:spigot-api:1.8.3-R0.1-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="Maven: org.spigotmc:spigot-api:1.8.8-R0.1-SNAPSHOT" level="project" />
     <orderEntry type="library" name="Maven: commons-lang:commons-lang:2.6" level="project" />
     <orderEntry type="library" name="Maven: com.googlecode.json-simple:json-simple:1.1.1" level="project" />
     <orderEntry type="library" name="Maven: junit:junit:4.10" level="project" />
@@ -21,24 +20,11 @@
     <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.2.4" level="project" />
     <orderEntry type="library" name="Maven: org.avaje:ebean:2.8.1" level="project" />
     <orderEntry type="library" name="Maven: javax.persistence:persistence-api:1.0" level="project" />
-    <orderEntry type="library" name="Maven: org.yaml:snakeyaml:1.14" level="project" />
-    <orderEntry type="library" name="Maven: net.md-5:bungeecord-chat:1.8-SNAPSHOT" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-buffer:4.0.25.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-common:4.0.25.Final" level="project" />
-    <orderEntry type="library" name="Maven: org.bukkit:bukkit:1.7.10-R0.1-SNAPSHOT" level="project" />
-    <orderEntry type="library" name="Maven: org.spigotmc:spigot-api:1.8.3-R0.1-SNAPSHOT" level="project" />
-    <orderEntry type="library" name="Maven: commons-lang:commons-lang:2.6" level="project" />
-    <orderEntry type="library" name="Maven: com.googlecode.json-simple:json-simple:1.1.1" level="project" />
-    <orderEntry type="library" name="Maven: junit:junit:4.10" level="project" />
-    <orderEntry type="library" name="Maven: org.hamcrest:hamcrest-core:1.1" level="project" />
-    <orderEntry type="library" name="Maven: com.google.guava:guava:17.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.2.4" level="project" />
-    <orderEntry type="library" name="Maven: org.avaje:ebean:2.8.1" level="project" />
-    <orderEntry type="library" name="Maven: javax.persistence:persistence-api:1.0" level="project" />
-    <orderEntry type="library" name="Maven: org.yaml:snakeyaml:1.14" level="project" />
+    <orderEntry type="library" name="Maven: org.yaml:snakeyaml:1.15" level="project" />
     <orderEntry type="library" name="Maven: net.md-5:bungeecord-chat:1.8-SNAPSHOT" level="project" />
     <orderEntry type="library" name="Maven: org.projectlombok:lombok:1.14.8" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-buffer:4.0.25.Final" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-common:4.0.25.Final" level="project" />
+    <orderEntry type="library" name="server" level="project" />
   </component>
 </module>

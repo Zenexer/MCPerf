@@ -1,14 +1,22 @@
 package com.earth2me.mcperf.validity;
 
+import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
+import java.util.StringJoiner;
 
 public abstract class MetaValidator<T extends ItemMeta> extends Validator
 {
+	private static Class<?> craftMetaItemClass;
+	private static Field unhandledTagsField;
+
 	public abstract Class<T> getMetaType();
 
+	@SuppressWarnings("RedundantIfStatement")
 	protected boolean isValidMeta(ItemStack stack, T meta)
 	{
 		if (meta.hasDisplayName())
@@ -55,6 +63,101 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator
 
 				i++;
 			}
+		}
+
+		try
+		{
+			if (!isValidNBT(stack, meta))
+			{
+				return false;
+			}
+		}
+		catch (Exception ex)
+		{
+			Bukkit.getLogger().severe("MCPerf's isValidNBT threw an exception!\n" + ex.toString());
+		}
+
+		return true;
+	}
+
+	private boolean isValidNBT(ItemStack stack, T meta)
+	{
+		if (!prepareReflection(meta.getClass()))
+		{
+			return true;  // Indeterminate
+		}
+
+		Map<String, Object> unhandledTags;
+		try
+		{
+			@SuppressWarnings("unchecked")
+			Map<String, Object> x = (Map<String, Object>)unhandledTagsField.get(meta);
+			unhandledTags = x;
+		}
+		catch (IllegalAccessException e)
+		{
+			Bukkit.getLogger().severe("Error reading unhandledTags field: " + e.getMessage());
+			return true;  // Indeterminate
+		}
+
+		if (unhandledTags != null && !unhandledTags.isEmpty())
+		{
+			StringJoiner tagText = new StringJoiner(", ");
+			unhandledTags.keySet().stream().forEach(tagText::add);
+			Bukkit.getLogger().warning(String.format("Detected suspicious tags: %s with tags %s", stack.getType().name(), tagText.toString()));
+
+			if (unhandledTags.containsKey("www.wurst-client.tk"))
+			{
+				onInvalid("mod/cheat client (www.wurst-client.tk)");
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private static boolean prepareReflection(Class<? extends ItemMeta> meta)
+	{
+		if (craftMetaItemClass != null && unhandledTagsField != null)
+		{
+			// Sanity check
+			if (!craftMetaItemClass.isInstance(meta))
+			{
+				Bukkit.getLogger().warning("Expected subclass of " + craftMetaItemClass.getCanonicalName() + ", but got: " + meta.getClass().getCanonicalName());
+				return false;
+			}
+
+			return true;
+		}
+
+		craftMetaItemClass = null;
+		unhandledTagsField = null;
+
+		for (Class<?> metaType = meta.getClass(); craftMetaItemClass == null; metaType = metaType.getSuperclass())
+		{
+			if (metaType == null)
+			{
+				Bukkit.getLogger().warning("Unable to retrieve CraftMetaItem type from " + meta.getCanonicalName());
+				return false;
+			}
+
+			switch (metaType.getSimpleName())
+			{
+				case "CraftMetaItem":
+					craftMetaItemClass = metaType;
+					break;
+			}
+		}
+
+		try
+		{
+			unhandledTagsField = craftMetaItemClass.getDeclaredField("unhandledTags");
+			unhandledTagsField.setAccessible(true);
+		}
+		catch (NoSuchFieldException ex)
+		{
+			Bukkit.getLogger().severe("CraftMetaItem type is missing unhandledTags field");
+			return false;
 		}
 
 		return true;
