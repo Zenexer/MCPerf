@@ -74,7 +74,7 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator
 		}
 		catch (Exception ex)
 		{
-			Bukkit.getLogger().severe("MCPerf's isValidNBT threw an exception!\n" + ex.toString());
+			Bukkit.getLogger().severe("[MCPerf] isValidNBT threw an exception!\n" + ex.toString());
 		}
 
 		return true;
@@ -82,7 +82,7 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator
 
 	private boolean isValidNBT(ItemStack stack, T meta)
 	{
-		if (!prepareReflection(meta.getClass()))
+		if (!prepareReflection(meta))
 		{
 			return true;  // Indeterminate
 		}
@@ -96,7 +96,7 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator
 		}
 		catch (IllegalAccessException e)
 		{
-			Bukkit.getLogger().severe("Error reading unhandledTags field: " + e.getMessage());
+			Bukkit.getLogger().severe("[MCPerf] Error reading unhandledTags field: " + e.getMessage());
 			return true;  // Indeterminate
 		}
 
@@ -104,7 +104,7 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator
 		{
 			StringJoiner tagText = new StringJoiner(", ");
 			unhandledTags.keySet().stream().forEach(tagText::add);
-			Bukkit.getLogger().warning(String.format("Detected suspicious tags: %s with tags %s", stack.getType().name(), tagText.toString()));
+			Bukkit.getLogger().warning(String.format("[MCPerf] Detected suspicious tags: %s with tags %s", stack.getType().name(), tagText.toString()));
 
 			if (unhandledTags.containsKey("www.wurst-client.tk"))
 			{
@@ -116,14 +116,14 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator
 		return true;
 	}
 
-	private static boolean prepareReflection(Class<? extends ItemMeta> meta)
+	private static <T extends ItemMeta> boolean prepareReflection(T meta)
 	{
 		if (craftMetaItemClass != null && unhandledTagsField != null)
 		{
 			// Sanity check
 			if (!craftMetaItemClass.isInstance(meta))
 			{
-				Bukkit.getLogger().warning("Expected subclass of " + craftMetaItemClass.getCanonicalName() + ", but got: " + meta.getClass().getCanonicalName());
+				Bukkit.getLogger().warning("[MCPerf] Expected subclass of " + craftMetaItemClass.getCanonicalName() + ", but got: " + meta.getClass().getCanonicalName());
 				return false;
 			}
 
@@ -137,7 +137,7 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator
 		{
 			if (metaType == null)
 			{
-				Bukkit.getLogger().warning("Unable to retrieve CraftMetaItem type from " + meta.getCanonicalName());
+				Bukkit.getLogger().warning("[MCPerf] Unable to retrieve CraftMetaItem type from " + meta.getClass().getCanonicalName());
 				return false;
 			}
 
@@ -156,7 +156,7 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator
 		}
 		catch (NoSuchFieldException ex)
 		{
-			Bukkit.getLogger().severe("CraftMetaItem type is missing unhandledTags field");
+			Bukkit.getLogger().severe("[MCPerf] CraftMetaItem type is missing unhandledTags field");
 			return false;
 		}
 

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Server;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.Chest;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -16,6 +17,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -111,13 +113,21 @@ public final class ValidityManager implements Listener
 
 	private void validate(Inventory inventory, HumanEntity sender)
 	{
+		validate(inventory, sender == null ? null : sender.getName());
+	}
+
+	private void validate(Inventory inventory, String sender)
+	{
 		try
 		{
-			for (ItemStack stack : inventory.getContents())
+			ItemStack[] contents = inventory.getContents();
+			for (int i = 0; i < contents.length; i++)
 			{
+				ItemStack stack = contents[i];
+
 				if (!isValid(stack, sender))
 				{
-					inventory.remove(stack);
+					inventory.clear(i);
 				}
 			}
 		}
@@ -177,6 +187,7 @@ public final class ValidityManager implements Listener
 			if (!event.isCancelled() && !isValid(event.getItemDrop().getItemStack(), event.getPlayer()))
 			{
 				event.setCancelled(true);
+				event.getItemDrop().remove();
 			}
 		}
 		catch (Exception e)
@@ -219,13 +230,13 @@ public final class ValidityManager implements Listener
 		{
 			Player player = event.getPlayer();
 
+			validate(player.getInventory(), player);
+			validate(player.getEnderChest(), player);
+
 			if (!isValid(player.getItemInHand(), player))
 			{
 				player.setItemInHand(null);
 			}
-
-			validate(player.getInventory(), player);
-			validate(player.getEnderChest(), player);
 		}
 		catch (Exception e)
 		{
@@ -277,12 +288,27 @@ public final class ValidityManager implements Listener
 					try
 					{
 						frame.setItem(null);
+						return;
 					}
 					catch (Exception e)
 					{
 						e.printStackTrace();
 					}
 				}
+			}
+
+			if (tile instanceof Chest)
+			{
+				Chest chest = (Chest)tile;
+				// Only check the side of the chest that's relevant for this block so we don't check the chest twice.
+				validate(chest.getBlockInventory(), "[chunk load]");
+				return;
+			}
+			else if (tile instanceof InventoryHolder)
+			{
+				InventoryHolder holder = (InventoryHolder)tile;
+				validate(holder.getInventory(), "[chunk load]");
+				return;
 			}
 		}
 	}
