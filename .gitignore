@@ -6,6 +6,8 @@ pom.xml.versionsBackup
 pom.xml.next
 release.properties
 
+*.jar
+
 atlassian-ide-plugin.xml
 .idea/
 *.iml
