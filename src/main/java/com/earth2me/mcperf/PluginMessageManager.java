@@ -1,10 +1,6 @@
 package com.earth2me.mcperf;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
-import com.google.common.base.Objects;
-//import io.netty.buffer.ByteBuf;
-//import io.netty.buffer.Unpooled;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
@@ -21,224 +17,192 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.bukkit.plugin.messaging.PluginMessageRecipient;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
-import java.util.function.Function;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+//import io.netty.buffer.ByteBuf;
+//import io.netty.buffer.Unpooled;
+
 
 @RequiredArgsConstructor
-public class PluginMessageManager implements PluginMessageListener, Listener
-{
-	private final static long RECHECK_DELAY = 2 * 20;
+public class PluginMessageManager implements PluginMessageListener, Listener {
+    private final static long RECHECK_DELAY = 2 * 20;
 
-	private final static Map<String, String> channelDescriptions;
+    private final static Map<String, String> channelDescriptions;
 
-	private final Server server;
-	private final Logger logger;
-	private final Plugin plugin;
+    private final Server server;
+    private final Logger logger;
+    private final Plugin plugin;
 
-	//private WeakHashMap<Player, FmlInfo> fmls;
+    //private WeakHashMap<Player, FmlInfo> fmls;
 
-	static
-	{
-		Map<String, String> _channelDescriptions = new HashMap<>();
-		_channelDescriptions.put("FORGE", "Forge");
-		_channelDescriptions.put("FML", "Forge Mod Loader");
-		_channelDescriptions.put("WECUI", "WorldEdit CUI");
-		channelDescriptions = Collections.unmodifiableMap(_channelDescriptions);
-	}
+    static {
+        Map<String, String> _channelDescriptions = new HashMap<>();
+        _channelDescriptions.put("FORGE", "Forge");
+        _channelDescriptions.put("FML", "Forge Mod Loader");
+        _channelDescriptions.put("WECUI", "WorldEdit CUI");
+        channelDescriptions = Collections.unmodifiableMap(_channelDescriptions);
+    }
 
-	private long getRecheckDelay()
-	{
-		return RECHECK_DELAY;
-	}
+    private long getRecheckDelay() {
+        return RECHECK_DELAY;
+    }
 
-	public void register()
-	{
-		//fmls = new WeakHashMap<>();
+    public void register() {
+        //fmls = new WeakHashMap<>();
 
-		registerDuplex("FML");
-		registerDuplex("FML|HS");
-		registerDuplex("FML|MP");
+        registerDuplex("FML");
+        registerDuplex("FML|HS");
+        registerDuplex("FML|MP");
 
-		server.getPluginCommand("chans").setExecutor(this::onChansCommand);
-	}
+        server.getPluginCommand("chans").setExecutor(this::onChansCommand);
+    }
 
-	public void unregister()
-	{
-		Bukkit.getMessenger().unregisterIncomingPluginChannel(plugin);
-		Bukkit.getMessenger().unregisterOutgoingPluginChannel(plugin);
+    public void unregister() {
+        Bukkit.getMessenger().unregisterIncomingPluginChannel(plugin);
+        Bukkit.getMessenger().unregisterOutgoingPluginChannel(plugin);
 
 		/*
-		if (fmls != null)
+        if (fmls != null)
 		{
 			fmls.clear();
 			fmls = null;
 		}
 		*/
-	}
+    }
 
-	private void registerRx(String channel)
-	{
-		Bukkit.getMessenger().registerIncomingPluginChannel(plugin, channel, this);
-	}
+    private void registerRx(String channel) {
+        Bukkit.getMessenger().registerIncomingPluginChannel(plugin, channel, this);
+    }
 
-	private void registerTx(String channel)
-	{
-		Bukkit.getMessenger().registerOutgoingPluginChannel(plugin, channel);
-	}
+    private void registerTx(String channel) {
+        Bukkit.getMessenger().registerOutgoingPluginChannel(plugin, channel);
+    }
 
-	private void registerDuplex(String channel)
-	{
-		registerRx(channel);
-		registerTx(channel);
-	}
+    private void registerDuplex(String channel) {
+        registerRx(channel);
+        registerTx(channel);
+    }
 
-	@SuppressWarnings("deprecation")
-	private boolean onChansCommand(final CommandSender sender, Command command, String label, String[] args)
-	{
-		boolean hasAllPermissions = sender.isOp() || sender.hasPermission("mcperf.chans.*");
+    @SuppressWarnings("deprecation")
+    private boolean onChansCommand(final CommandSender sender, Command command, String label, String[] args) {
+        boolean hasAllPermissions = sender.isOp() || sender.hasPermission("mcperf.chans.*");
 
-		if (!hasAllPermissions && !sender.hasPermission("mcperf.chans"))
-		{
-			return Util.denyPermission(sender);
-		}
+        if (!hasAllPermissions && !sender.hasPermission("mcperf.chans")) {
+            return Util.denyPermission(sender);
+        }
 
-		if (args.length < 1)
-		{
-			return false;
-		}
+        if (args.length < 1) {
+            return false;
+        }
 
-		if (args.length > 1 && !hasAllPermissions && !sender.hasPermission("mcperf.chans.multiple"))
-		{
-			return Util.denyPermission(sender);
-		}
+        if (args.length > 1 && !hasAllPermissions && !sender.hasPermission("mcperf.chans.multiple")) {
+            return Util.denyPermission(sender);
+        }
 
-		Stream<Player> players;
-		if (args.length == 1 && "*".equals(args[0]))
-		{
-			if (!hasAllPermissions && !sender.hasPermission("mcperf.chans.all"))
-			{
-				return Util.denyPermission(sender);
-			}
+        Stream<Player> players;
+        if (args.length == 1 && "*".equals(args[0])) {
+            if (!hasAllPermissions && !sender.hasPermission("mcperf.chans.all")) {
+                return Util.denyPermission(sender);
+            }
 
-			players = server.getOnlinePlayers().stream().map(p -> p);  // Gets around buggy generics
-		}
-		else
-		{
-			players = Stream.of(args)
-				.map(server::getPlayer)
-				.filter(java.util.Objects::nonNull);
-		}
+            players = server.getOnlinePlayers().stream().map(p -> p);  // Gets around buggy generics
+        } else {
+            players = Stream.of(args)
+                    .map(server::getPlayer)
+                    .filter(java.util.Objects::nonNull);
+        }
 
-		Map<String, Set<String>> playerChannels = players.collect(Collectors.toMap(Player::getName, PluginMessageRecipient::getListeningPluginChannels));
+        Map<String, Set<String>> playerChannels = players.collect(Collectors.toMap(Player::getName, PluginMessageRecipient::getListeningPluginChannels));
 
-		if (playerChannels.isEmpty())
-		{
-			sender.sendMessage("No online players matched your parameters.");
-			return true;
-		}
+        if (playerChannels.isEmpty()) {
+            sender.sendMessage("No online players matched your parameters.");
+            return true;
+        }
 
-		List<String> notListening = playerChannels.entrySet().stream()
-			.filter(e -> e.getValue().isEmpty())
-			.map(Map.Entry::getKey)
-			.collect(Collectors.toList());
+        List<String> notListening = playerChannels.entrySet().stream()
+                .filter(e -> e.getValue().isEmpty())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
 
-		if (notListening.isEmpty())
-		{
-			sender.sendMessage("All specified players have at least one channel registered.");
-		}
-		else
-		{
-			sender.sendMessage("None registered: " + Joiner.on(", ").join(notListening));
-		}
+        if (notListening.isEmpty()) {
+            sender.sendMessage("All specified players have at least one channel registered.");
+        } else {
+            sender.sendMessage("None registered: " + Joiner.on(", ").join(notListening));
+        }
 
-		playerChannels.entrySet().stream()
-			.filter(e -> !e.getValue().isEmpty())
-			.forEach(e -> sender.sendMessage(String.format("- %s: %s", e.getKey(), Joiner.on(", ").join(e.getValue()))));
-		return true;
-	}
+        playerChannels.entrySet().stream()
+                .filter(e -> !e.getValue().isEmpty())
+                .forEach(e -> sender.sendMessage(String.format("- %s: %s", e.getKey(), Joiner.on(", ").join(e.getValue()))));
+        return true;
+    }
 
-	public boolean checkChannels(Player player)
-	{
-		Set<String> channels = player.getListeningPluginChannels();
-		List<String> warnings = channelDescriptions.entrySet().stream()
-			.filter(c -> channels.contains(c.getKey()))
-			.map(Map.Entry::getValue)
-			.collect(Collectors.toList());
+    public boolean checkChannels(Player player) {
+        Set<String> channels = player.getListeningPluginChannels();
+        List<String> warnings = channelDescriptions.entrySet().stream()
+                .filter(c -> channels.contains(c.getKey()))
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toList());
 
-		if (warnings.isEmpty())
-		{
-			debug("Player %s isn't using any mod channels at the moment.  Channels: %s", player.getName(), Joiner.on(", ").join(player.getListeningPluginChannels()));
-			return false;
-		}
+        if (warnings.isEmpty()) {
+            debug("Player %s isn't using any mod channels at the moment.  Channels: %s", player.getName(), Joiner.on(", ").join(player.getListeningPluginChannels()));
+            return false;
+        }
 
-		alert("Warning: Player %s is using mod channels: %s", player.getName(), Joiner.on(", ").join(warnings));
-		return true;
-	}
+        alert("Warning: Player %s is using mod channels: %s", player.getName(), Joiner.on(", ").join(warnings));
+        return true;
+    }
 
-	public void alert(String format, Object... args)
-	{
-		alert(String.format(format, args));
-	}
+    public void alert(String format, Object... args) {
+        alert(String.format(format, args));
+    }
 
-	public void alert(String message)
-	{
-		Stream.concat(
-			Stream.of(server.getConsoleSender()),
-			server.getOperators().stream()
-				.filter(p -> p instanceof Player)
-				.map(p -> (CommandSender)p)
-		).forEach(s -> s.sendMessage(message));
-	}
+    public void alert(String message) {
+        Stream.concat(
+                Stream.of(server.getConsoleSender()),
+                server.getOperators().stream()
+                        .filter(p -> p instanceof Player)
+                        .map(p -> (CommandSender) p)
+        ).forEach(s -> s.sendMessage(message));
+    }
 
-	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
-	public void onPlayerQuit(PlayerQuitEvent event)
-	{
-		//fmls.remove(event.getPlayer());
-	}
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        //fmls.remove(event.getPlayer());
+    }
 
-	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
-	public void onPlayerRegisterChannel(PlayerRegisterChannelEvent event)
-	{
-		Player player = event.getPlayer();
-		String channel = event.getChannel();
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onPlayerRegisterChannel(PlayerRegisterChannelEvent event) {
+        Player player = event.getPlayer();
+        String channel = event.getChannel();
 
-		alert("[CHANSNIFF] %s registered %s", player.getName(), channel);
+        alert("[CHANSNIFF] %s registered %s", player.getName(), channel);
 
-		switch (channel)
-		{
-			case "FML":  // Broken at the moment
+        switch (channel) {
+            case "FML":  // Broken at the moment
 				/*
 				player.sendPluginMessage(plugin, channel, new byte[] {
 					(byte)FmlPacketType.INIT_HANDSHAKE.ordinal(),
 					(byte)FmlSide.CLIENT.ordinal(),
 				});
 				*/
-				break;
-		}
-	}
+                break;
+        }
+    }
 
-	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
-	public void onPlayerUnregisterChannel(PlayerUnregisterChannelEvent event)
-	{
-		Player player = event.getPlayer();
-		String channel = event.getChannel();
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onPlayerUnregisterChannel(PlayerUnregisterChannelEvent event) {
+        Player player = event.getPlayer();
+        String channel = event.getChannel();
 
-		debug("[CHANSNIFF] %s unregistered %s", player.getName(), channel);
-	}
+        debug("[CHANSNIFF] %s unregistered %s", player.getName(), channel);
+    }
 
-	@Override
-	public void onPluginMessageReceived(String channel, Player player, byte[] data)
-	{
-		debug("[CHANSNIFF:D] Received data from %s on channel %s", player.getName(), channel);
+    @Override
+    public void onPluginMessageReceived(String channel, Player player, byte[] data) {
+        debug("[CHANSNIFF:D] Received data from %s on channel %s", player.getName(), channel);
 
 		/*
 		try
@@ -261,12 +225,11 @@ public class PluginMessageManager implements PluginMessageListener, Listener
 			logger.warning(String.format("Got bad plugin message from player %s on channel %s: %s", player.getName(), channel, ex.getMessage()));
 		}
 		*/
-	}
+    }
 
-	private void debug(String format, Object... args)
-	{
-		server.getConsoleSender().sendMessage(String.format(format, args));
-	}
+    private void debug(String format, Object... args) {
+        server.getConsoleSender().sendMessage(String.format(format, args));
+    }
 
 	/*
 

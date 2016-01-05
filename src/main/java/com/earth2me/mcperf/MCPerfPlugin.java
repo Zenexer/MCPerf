@@ -14,108 +14,94 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MCPerfPlugin extends JavaPlugin
-{
-	@Getter
-	private EntityManager entityManager;
-	@Getter
-	private ValidityManager validityManager;
-	@Getter
-	private MonitorManager monitorManager;
-	@Getter
-	private SecurityManager securityManager;
-	@Getter
-	private PluginMessageManager pluginMessageManager;
+public class MCPerfPlugin extends JavaPlugin {
+    @Getter
+    private EntityManager entityManager;
+    @Getter
+    private ValidityManager validityManager;
+    @Getter
+    private MonitorManager monitorManager;
+    @Getter
+    private SecurityManager securityManager;
+    @Getter
+    private PluginMessageManager pluginMessageManager;
 
-	private final List<Listener> listeners = new ArrayList<>();
+    private final List<Listener> listeners = new ArrayList<>();
 
-	private void ensureConfig()
-	{
-		try
-		{
-			if (!new File("config.yml").exists())
-			{
-				saveDefaultConfig();
-			}
-		}
-		catch (Exception ex)
-		{
-			getLogger().warning("Couldn't save default configuration: " + ex.getMessage());
-		}
-	}
+    private void ensureConfig() {
+        try {
+            if (!new File("config.yml").exists()) {
+                saveDefaultConfig();
+            }
+        } catch (Exception ex) {
+            getLogger().warning("Couldn't save default configuration: " + ex.getMessage());
+        }
+    }
 
-	private void loadConfiguration()
-	{
-		FileConfiguration config = getConfig();
+    private void loadConfiguration() {
+        FileConfiguration config = getConfig();
 
-		entityManager.setNearbyChunkRadius(config.getInt("entityManager.nearbyChunkRadius", entityManager.getNearbyChunkRadius()));
-		entityManager.setNearbyCreatureLimit(config.getInt("entityManager.nearbyCreatureLimit", entityManager.getNearbyCreatureLimit()));
-		entityManager.setNearbyItemLimit(config.getInt("entityManager.nearbyItemLimit", entityManager.getNearbyItemLimit()));
-		entityManager.setWorldCreatureLimit(config.getInt("entityManager.worldCreatureLimit", entityManager.getWorldCreatureLimit()));
-		entityManager.setWorldItemLimit(config.getInt("entityManager.worldItemLimit", entityManager.getWorldItemLimit()));
+        entityManager.setNearbyChunkRadius(config.getInt("entityManager.nearbyChunkRadius", entityManager.getNearbyChunkRadius()));
+        entityManager.setNearbyCreatureLimit(config.getInt("entityManager.nearbyCreatureLimit", entityManager.getNearbyCreatureLimit()));
+        entityManager.setNearbyItemLimit(config.getInt("entityManager.nearbyItemLimit", entityManager.getNearbyItemLimit()));
+        entityManager.setWorldCreatureLimit(config.getInt("entityManager.worldCreatureLimit", entityManager.getWorldCreatureLimit()));
+        entityManager.setWorldItemLimit(config.getInt("entityManager.worldItemLimit", entityManager.getWorldItemLimit()));
 
-		validityManager.setConfig(new ValidityConfiguration(config));
-	}
+        validityManager.setConfig(new ValidityConfiguration(config));
+    }
 
-	@Override
-	public void onEnable()
-	{
-		ensureConfig();
+    @Override
+    public void onEnable() {
+        ensureConfig();
 
-		listeners.addAll(Arrays.asList(
-			securityManager = new SecurityManager(getServer(), getLogger()),
-			monitorManager = new MonitorManager(getServer(), getLogger()),
-			entityManager = new EntityManager(getServer(), getLogger(), this),
-			validityManager = new ValidityManager(getServer(), getLogger()),
-			pluginMessageManager = new PluginMessageManager(getServer(), getLogger(), this)
-		));
-		pluginMessageManager.register();
+        listeners.addAll(Arrays.asList(
+                securityManager = new SecurityManager(getServer(), getLogger()),
+                monitorManager = new MonitorManager(getServer(), getLogger()),
+                entityManager = new EntityManager(getServer(), getLogger(), this),
+                validityManager = new ValidityManager(getServer(), getLogger()),
+                pluginMessageManager = new PluginMessageManager(getServer(), getLogger(), this)
+        ));
+        pluginMessageManager.register();
 
-		// Listeners must already be instantiated.
-		loadConfiguration();
+        // Listeners must already be instantiated.
+        loadConfiguration();
 
-		PluginManager pluginManager = getServer().getPluginManager();
-		listeners.forEach(listener -> pluginManager.registerEvents(listener, this));
+        PluginManager pluginManager = getServer().getPluginManager();
+        listeners.forEach(listener -> pluginManager.registerEvents(listener, this));
 
-		super.onEnable();
-	}
+        super.onEnable();
+    }
 
-	@Override
-	public void onDisable()
-	{
-		listeners.clear();
+    @Override
+    public void onDisable() {
+        listeners.clear();
 
-		if (pluginMessageManager != null)
-		{
-			pluginMessageManager.unregister();
-		}
+        if (pluginMessageManager != null) {
+            pluginMessageManager.unregister();
+        }
 
-		super.onDisable();
-	}
+        super.onDisable();
+    }
 
-	public void reload()
-	{
-		reloadConfig();
-		loadConfiguration();
-	}
+    public void reload() {
+        reloadConfig();
+        loadConfiguration();
+    }
 
-	@Override
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args)
-	{
-		switch (command.getName())
-		{
-			case "mcperf":
-				if (!sender.hasPermission("mcperf.reload") && !sender.isOp())
-				{
-					return false;
-				}
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        switch (command.getName()) {
+            case "mcperf":
+                if (!sender.hasPermission("mcperf.reload") && !sender.isOp()) {
+                    return false;
+                }
 
-				reload();
-				sender.sendMessage("MCPerf reloaded");
-				return true;
+                reload();
+                sender.sendMessage("MCPerf reloaded");
+                return true;
 
-			default:
-				return false;
-		}
-	}
+            default:
+                return false;
+        }
+    }
 }

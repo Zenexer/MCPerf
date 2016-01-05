@@ -12,53 +12,42 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @RequiredArgsConstructor
-public final class SecurityManager implements Listener
-{
-	private static final String KICK_REASON = "Invalid player state";
+public final class SecurityManager implements Listener {
+    private static final String KICK_REASON = "Invalid player state";
 
-	private final Server server;
-	private final Logger logger;
+    private final Server server;
+    private final Logger logger;
 
-	private void onInvalidPlayer(Player player, boolean alreadyKicked)
-	{
-		if (!alreadyKicked)
-		{
-			try
-			{
-				player.kickPlayer(KICK_REASON);
-			}
-			catch (Exception e)
-			{
-				logger.log(Level.WARNING, "Failed to kick player for invalid state", e);
-			}
-		}
-	}
+    private void onInvalidPlayer(Player player, boolean alreadyKicked) {
+        if (!alreadyKicked) {
+            try {
+                player.kickPlayer(KICK_REASON);
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Failed to kick player for invalid state", e);
+            }
+        }
+    }
 
-	public boolean assertValidPlayer(Player player)
-	{
-		if (!isValidPlayer(player))
-		{
-			onInvalidPlayer(player, false);
-			return false;
-		}
+    public boolean assertValidPlayer(Player player) {
+        if (!isValidPlayer(player)) {
+            onInvalidPlayer(player, false);
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	@SuppressWarnings("RedundantIfStatement")
-	public boolean isValidPlayer(Player player)
-	{
-		if (server.getPlayer(player.getUniqueId()) != player)
-		{
-			return false;
-		}
+    @SuppressWarnings("RedundantIfStatement")
+    public boolean isValidPlayer(Player player) {
+        if (server.getPlayer(player.getUniqueId()) != player) {
+            return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	@EventHandler(priority = EventPriority.LOWEST)
-	public void onPlayerJoin(PlayerJoinEvent event)
-	{
-		assertValidPlayer(event.getPlayer());
-	}
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        assertValidPlayer(event.getPlayer());
+    }
 }
