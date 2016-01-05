@@ -8,3 +8,4 @@ release.properties
 
 atlassian-ide-plugin.xml
 .idea/
+*.iml
