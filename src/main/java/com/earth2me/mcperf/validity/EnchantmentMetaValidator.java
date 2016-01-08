@@ -13,8 +13,8 @@ public class EnchantmentMetaValidator extends MetaValidator<EnchantmentStorageMe
     }
 
     @Override
-    protected boolean isValidMeta(ItemStack stack, EnchantmentStorageMeta meta) {
-        if (!super.isValidMeta(stack, meta)) {
+    protected boolean isValidMeta(ItemStack stack, EnchantmentStorageMeta meta, boolean strict) {
+        if (!super.isValidMeta(stack, meta, strict)) {
             return false;
         }
 

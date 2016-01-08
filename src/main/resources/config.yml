@@ -9,9 +9,20 @@ validityManager:
   maxLoreLines: 5
   maxLoreLineLength: 127
   maxNameLength: 63
-  fullUnicodeAllowed: false
+  basicUnicodeAllowed: true
+  supplementaryUnicodeAllowed: true
+  privateUnicodeAllowed: true
+  linebreakUnicodeAllowed: false
+  controlUnicodeAllowed: false
+  unusualWhitespaceUnicodeAllowed: false
+  nullCharAllowed: false
+  escapeCharAllowed: false
+  formattingAllowed: true
+  crazyTextAllowed: true
   enchantmentCheckingEnabled: false
   potionCheckingEnabled: false
   splashPotionCheckingEnabled: false
   splashPotionsBanned: false
   zeroQuantityBanned: false
+screeningManager:
+  enabled: false

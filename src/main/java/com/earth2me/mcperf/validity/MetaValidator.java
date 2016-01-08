@@ -5,18 +5,36 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.lang.reflect.Field;
-import java.util.List;
-import java.util.Map;
-import java.util.StringJoiner;
+import java.lang.reflect.Method;
+import java.util.*;
 
 public abstract class MetaValidator<T extends ItemMeta> extends Validator {
-    private static Class<?> craftMetaItemClass;
-    private static Field unhandledTagsField;
+    private static final String OBFUSCATED_CLIENT_W = new String(Base64.getDecoder().decode("Lnd3dy53dXJzdC1jbGllbnQudGsK")).substring(1);
+            ;
+
+    private static String versionKey;                      // Example: ".v1_8_R3"  Note the dot prefix.
+    private static Class<?> craftMetaItemClass;            // org.bukkit.craftbukkit{versionKey}.inventory.CraftMetaItem
+    private static Field unhandledTagsField;               // CraftMetaItem#unhandledTagsField
+    private static Class<?> nbtTagCompoundClass;           // net.minecraft.server{versionKey}.NBTTagCompound
+    private static Class<?> nbtTagListClass;               // net.minecraft.server{versionKey}.NBTTagList
+    private static Class<?> nbtNumberClass;                // net.minecraft.server{versionKey}.NBTBase.NBTNumber
+    private static Class<?> nbtTagStringClass;             // net.minecraft.server{versionKey}.NBTTagString
+    private static Map<Class<?>, Method> getNumberMethods; // net.minecraft.server{versionKey}.NBTBase.NBTNumber#{obfuscated}
+
+    static {
+        getNumberMethods = new HashMap<>();
+        getNumberMethods.put(Long.TYPE, null);
+        getNumberMethods.put(Integer.TYPE, null);
+        getNumberMethods.put(Short.TYPE, null);
+        getNumberMethods.put(Byte.TYPE, null);
+        getNumberMethods.put(Double.TYPE, null);
+        getNumberMethods.put(Float.TYPE, null);
+    }
 
     public abstract Class<T> getMetaType();
 
     @SuppressWarnings("RedundantIfStatement")
-    protected boolean isValidMeta(ItemStack stack, T meta) {
+    protected boolean isValidMeta(ItemStack stack, T meta, boolean strict) {
         if (meta.hasDisplayName()) {
             String name = meta.getDisplayName();
 
@@ -86,8 +104,8 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator {
             unhandledTags.keySet().stream().forEach(tagText::add);
             Bukkit.getLogger().warning(String.format("[MCPerf] Detected suspicious tags: %s with tags %s", stack.getType().name(), tagText.toString()));
 
-            if (unhandledTags.containsKey("www.wurst-client.tk")) {
-                onInvalid("mod/cheat client (www.wurst-client.tk)");
+            if (unhandledTags.containsKey(OBFUSCATED_CLIENT_W)) {
+                onInvalid("mod/cheat client (" + OBFUSCATED_CLIENT_W + ")");
                 return false;
             }
         }
@@ -99,7 +117,7 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator {
         if (craftMetaItemClass != null && unhandledTagsField != null) {
             // Sanity check
             if (!craftMetaItemClass.isInstance(meta)) {
-                Bukkit.getLogger().warning("[MCPerf] Expected subclass of " + craftMetaItemClass.getCanonicalName() + ", but got: " + meta.getClass().getCanonicalName());
+                Bukkit.getLogger().severe("[MCPerf] Expected subclass of " + craftMetaItemClass.getCanonicalName() + ", but got: " + meta.getClass().getCanonicalName());
                 return false;
             }
 
@@ -108,25 +126,70 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator {
 
         craftMetaItemClass = null;
         unhandledTagsField = null;
+        versionKey = null;
 
         for (Class<?> metaType = meta.getClass(); craftMetaItemClass == null; metaType = metaType.getSuperclass()) {
             if (metaType == null) {
-                Bukkit.getLogger().warning("[MCPerf] Unable to retrieve CraftMetaItem type from " + meta.getClass().getCanonicalName());
+                Bukkit.getLogger().severe("[MCPerf] Unable to retrieve CraftMetaItem type from " + meta.getClass().getCanonicalName());
                 return false;
             }
 
-            switch (metaType.getSimpleName()) {
-                case "CraftMetaItem":
-                    craftMetaItemClass = metaType;
+            Package pkg = metaType.getPackage();
+            String name = metaType.getSimpleName();
+            final String prefix = "org.bukkit.craftbukkit.";
+            if (pkg != null && "CraftMetaItem".equals(name) && pkg.getName().startsWith(prefix)) {
+                craftMetaItemClass = metaType;
+
+                String tmp = pkg.getName().substring(prefix.length());
+                if (tmp.equals("inventory")) {
+                    versionKey = "";
                     break;
+                }
+
+                int dot = tmp.indexOf('.');
+                if (dot <= 0) {  // <= because we want to disallow "..", although that should be impossible
+                    Bukkit.getLogger().severe("[MCPerf] Unable to retrieve CraftBukkit version key from package: " + pkg.getName());
+                    return false;
+                }
+
+                versionKey = pkg.getName().substring(0, dot);
             }
         }
 
         try {
+            nbtTagCompoundClass = Class.forName("net.minecraft.server" + versionKey + ".NBTTagCompound");
+            nbtTagListClass     = Class.forName("net.minecraft.server" + versionKey + ".NBTTagList");
+            nbtNumberClass      = Class.forName("net.minecraft.server" + versionKey + ".NBTBase.NBTNumber");
+            nbtTagStringClass   = Class.forName("net.minecraft.server" + versionKey + ".NBTTagString");
+
             unhandledTagsField = craftMetaItemClass.getDeclaredField("unhandledTags");
-            unhandledTagsField.setAccessible(true);
+            for (Field i : new Field[] {
+                    unhandledTagsField,
+            }) {
+                i.setAccessible(true);
+            }
+
+            getNumberMethods = new HashMap<>();
+            for (Method method : nbtNumberClass.getDeclaredMethods()) {
+                Class<?> type = method.getReturnType();
+                if (method.getParameterCount() == 0 && getNumberMethods.containsKey(type) && getNumberMethods.get(type) == null) {
+                    method.setAccessible(true);
+                    getNumberMethods.put(type, method);
+                }
+            }
+            for (Map.Entry<Class<?>, Method> entry : getNumberMethods.entrySet()) {
+                if (entry.getValue() == null) {
+                    throw new NoSuchMethodException("Missing method that returns type " + entry.getKey().getName() + " for NBTNumber");
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            Bukkit.getLogger().severe("[MCPerf] Couldn't find a required class: " + ex.getMessage());
+            return false;
         } catch (NoSuchFieldException ex) {
-            Bukkit.getLogger().severe("[MCPerf] CraftMetaItem type is missing unhandledTags field");
+            Bukkit.getLogger().severe("[MCPerf] Couldn't find a required field: " + ex.getMessage());
+            return false;
+        } catch (NoSuchMethodException ex) {
+            Bukkit.getLogger().severe("[MCPerf] Couldn't find a required method: " + ex.getMessage());
             return false;
         }
 
@@ -135,12 +198,12 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator {
 
     @SuppressWarnings("RedundantIfStatement")
     @Override
-    public boolean isValid(ItemStack stack) {
-        if (!super.isValid(stack)) {
+    public boolean isValid(ItemStack stack, boolean strict) {
+        if (!super.isValid(stack, strict)) {
             return false;
         }
 
-        if (!isValidMeta(stack, getMetaType().cast(stack.getItemMeta()))) {
+        if (!isValidMeta(stack, getMetaType().cast(stack.getItemMeta()), strict)) {
             return false;
         }
 

@@ -10,8 +10,8 @@ public class PotionMetaValidator extends MetaValidator<PotionMeta> {
     }
 
     @Override
-    protected boolean isValidMeta(ItemStack stack, PotionMeta meta) {
-        if (!super.isValidMeta(stack, meta)) {
+    protected boolean isValidMeta(ItemStack stack, PotionMeta meta, boolean strict) {
+        if (!super.isValidMeta(stack, meta, strict)) {
             return false;
         }
 

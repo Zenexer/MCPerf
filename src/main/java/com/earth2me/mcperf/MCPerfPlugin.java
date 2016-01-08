@@ -5,7 +5,6 @@ import lombok.Getter;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.event.Listener;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -25,8 +24,10 @@ public class MCPerfPlugin extends JavaPlugin {
     private SecurityManager securityManager;
     @Getter
     private PluginMessageManager pluginMessageManager;
+    @Getter
+    private ScreeningManager screeningManager;
 
-    private final List<Listener> listeners = new ArrayList<>();
+    private final List<Manager> managers = new ArrayList<>();
 
     private void ensureConfig() {
         try {
@@ -48,18 +49,21 @@ public class MCPerfPlugin extends JavaPlugin {
         entityManager.setWorldItemLimit(config.getInt("entityManager.worldItemLimit", entityManager.getWorldItemLimit()));
 
         validityManager.setConfig(new ValidityConfiguration(config));
+
+        screeningManager.setEnabled(config.getBoolean("screeningManager.enabled", screeningManager.isEnabled()));
     }
 
     @Override
     public void onEnable() {
         ensureConfig();
 
-        listeners.addAll(Arrays.asList(
-                securityManager = new SecurityManager(getServer(), getLogger()),
-                monitorManager = new MonitorManager(getServer(), getLogger()),
+        managers.addAll(Arrays.asList(
+                securityManager = new SecurityManager(getServer(), getLogger(), this),
+                monitorManager = new MonitorManager(getServer(), getLogger(), this),
                 entityManager = new EntityManager(getServer(), getLogger(), this),
-                validityManager = new ValidityManager(getServer(), getLogger()),
-                pluginMessageManager = new PluginMessageManager(getServer(), getLogger(), this)
+                validityManager = new ValidityManager(getServer(), getLogger(), this),
+                pluginMessageManager = new PluginMessageManager(getServer(), getLogger(), this),
+                screeningManager = new ScreeningManager(getServer(), getLogger(), this)
         ));
         pluginMessageManager.register();
 
@@ -67,14 +71,14 @@ public class MCPerfPlugin extends JavaPlugin {
         loadConfiguration();
 
         PluginManager pluginManager = getServer().getPluginManager();
-        listeners.forEach(listener -> pluginManager.registerEvents(listener, this));
+        managers.forEach(listener -> pluginManager.registerEvents(listener, this));
 
         super.onEnable();
     }
 
     @Override
     public void onDisable() {
-        listeners.clear();
+        managers.clear();
 
         if (pluginMessageManager != null) {
             pluginMessageManager.unregister();

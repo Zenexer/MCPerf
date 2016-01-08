@@ -5,7 +5,8 @@ load: STARTUP
 author: Zenexer
 main: com.earth2me.mcperf.MCPerfPlugin
 loadbefore:
-  # We need to load before all other plugins, if at all possible.
+  # We need to load before all other plugins, if at all possible.  This ensures that we intercept commands and chat
+  # before everything else.
   - Vault
   - Essentials
   - MilkyKore
@@ -65,13 +66,23 @@ commands:
     description: "Displays the plugin channels that a user's client has registered."
     permission: mcperf.chans
     usage: '/<command> * | <player> [player]...'
+  screen:
+    description: "Starts an interactive screening process for hack clients."
+    permission: mcperf.screen
+    usage: '/<command> * | <player> [player]...'
 permissions:
   mcperf.*:
     description: 'Full MCPerf access'
     children:
       mcperf.reload: true
       mcperf.chans: true
+      mcperf.chans.multiple: true
       mcperf.chans.all: true
+      mcperf.chans.*: true
+      mcperf.screen: true
+      mcperf.screen.multiple: true
+      mcperf.screen.all: true
+      mcperf.chans.*: true
   mcperf.reload:
     description: 'Gives access to /mcperf; used to reload configuration'
   mcperf.chans.*:
@@ -86,3 +97,15 @@ permissions:
     description: 'Gives access to /chans with more than one argument'
   mcperf.chans.all:
     description: 'Gives access to /chans *; used to scan the channels of every player on the server'
+  mcperf.screen:
+    description: 'Gives access to /screen; used to screen players for hack clients'
+  mcperf.screen.multiple:
+    description: 'Gives access to /screen with more than one argument'
+  mcperf.screen.all:
+    description: 'Gives access to /screen *; used to screen every player on the server'
+  mcperf.screen.*:
+    description: 'Full /screen access'
+    children:
+      mcperf.screen: true
+      mcperf.screen.multiple: true
+      mcperf.screen.all: true

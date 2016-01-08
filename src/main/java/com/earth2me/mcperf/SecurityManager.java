@@ -1,29 +1,27 @@
 package com.earth2me.mcperf;
 
-import lombok.RequiredArgsConstructor;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@RequiredArgsConstructor
-public final class SecurityManager implements Listener {
+public final class SecurityManager extends Manager {
     private static final String KICK_REASON = "Invalid player state";
 
-    private final Server server;
-    private final Logger logger;
+    public SecurityManager(Server server, Logger logger, MCPerfPlugin plugin) {
+        super(server, logger, plugin);
+    }
 
     private void onInvalidPlayer(Player player, boolean alreadyKicked) {
         if (!alreadyKicked) {
             try {
                 player.kickPlayer(KICK_REASON);
             } catch (Exception e) {
-                logger.log(Level.WARNING, "Failed to kick player for invalid state", e);
+                getLogger().log(Level.WARNING, "Failed to kick player for invalid state", e);
             }
         }
     }
@@ -39,7 +37,7 @@ public final class SecurityManager implements Listener {
 
     @SuppressWarnings("RedundantIfStatement")
     public boolean isValidPlayer(Player player) {
-        if (server.getPlayer(player.getUniqueId()) != player) {
+        if (getServer().getPlayer(player.getUniqueId()) != player) {
             return false;
         }
 

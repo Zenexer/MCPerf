@@ -2,7 +2,6 @@ package com.earth2me.mcperf;
 
 import com.google.common.collect.Iterables;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -12,10 +11,8 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
-import org.bukkit.plugin.Plugin;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,9 +22,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-
-@RequiredArgsConstructor
-public final class EntityManager implements Listener {
+public final class EntityManager extends Manager {
     @Getter
     @Setter
     private int nearbyChunkRadius = 1;
@@ -44,10 +39,11 @@ public final class EntityManager implements Listener {
     @Setter
     private int worldCreatureLimit = 2000;
 
-    private final Server server;
-    private final Logger logger;
-    private final Plugin plugin;
     private final AtomicBoolean cleanupRunning = new AtomicBoolean(false);
+
+    public EntityManager(Server server, Logger logger, MCPerfPlugin plugin) {
+        super(server, logger, plugin);
+    }
 
     private static boolean isIgnoredEntityType(EntityType entityType) {
         // Much faster than testing the contents of a list.
@@ -105,7 +101,7 @@ public final class EntityManager implements Listener {
 
         World world = location.getWorld();
         int count = entities.size();
-        logger.warning(String.format("Too many entities (%d) in world [%s]; running cleanup", count, world.getName()));
+        getLogger().warning(String.format("Too many entities (%d) in world [%s]; running cleanup", count, world.getName()));
 
         cleanup(entities, limit);
     }
@@ -145,7 +141,7 @@ public final class EntityManager implements Listener {
         World world = location.getWorld();
         int x = location.getBlockX() >> 4;
         int z = location.getBlockZ() >> 4;
-        logger.warning(String.format("Too many entities at (%s, %d, %d); running cleanup", world.getName(), x << 4, z << 4));
+        getLogger().warning(String.format("Too many entities at (%s, %d, %d); running cleanup", world.getName(), x << 4, z << 4));
 
         cleanup(Iterables.unmodifiableIterable(entities), limit);
     }
@@ -156,17 +152,17 @@ public final class EntityManager implements Listener {
     }
 
     private void cleanup(Iterable<Entity> entities, int limit) {
-        server.getScheduler().runTaskAsynchronously(plugin, () -> {
+        getServer().getScheduler().runTaskAsynchronously(getPlugin(), () -> {
             try {
                 List<EntityType> problemTypes = getProblematicEntityTypes(filteredEntityStream(entities), limit);
 
                 if (problemTypes.isEmpty()) {
-                    logger.warning("Assertion failed; couldn't find any entities after grouping and sorting");
+                    getLogger().warning("Assertion failed; couldn't find any entities after grouping and sorting");
                     // Shouldn't typically happen
                     return;
                 }
 
-                logger.warning(String.format("Top problem entity type: %s", problemTypes.get(0).name()));
+                getLogger().warning(String.format("Top problem entity type: %s", problemTypes.get(0).name()));
 
                 if (problemTypes.get(0) == EntityType.PLAYER) {
                     // If players are the primary cause, we shouldn't start deleting everything.
@@ -177,7 +173,7 @@ public final class EntityManager implements Listener {
                 // Evaluate immediately
                 final Entity[] toRemove = filteredEntityStream(entities).filter(entity -> problemTypes.contains(entity.getType())).toArray(Entity[]::new);
 
-                server.getScheduler().callSyncMethod(plugin, () -> {
+                getServer().getScheduler().callSyncMethod(getPlugin(), () -> {
                     for (Entity entity : toRemove) {
                         entity.remove();
                     }
@@ -186,7 +182,7 @@ public final class EntityManager implements Listener {
             } finally {
                 // Run at most every 2 seconds.
                 // Synchronous is probably faster here.
-                server.getScheduler().scheduleSyncDelayedTask(plugin, () -> cleanupRunning.set(false), 40);
+                getServer().getScheduler().scheduleSyncDelayedTask(getPlugin(), () -> cleanupRunning.set(false), 40);
             }
         });
     }

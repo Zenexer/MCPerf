@@ -1,13 +1,11 @@
 package com.earth2me.mcperf;
 
 import com.google.common.base.Joiner;
-import lombok.RequiredArgsConstructor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChatEvent;
 
 import java.lang.ref.WeakReference;
@@ -15,27 +13,25 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-
-@RequiredArgsConstructor
-public class MonitorManager implements Listener {
+public final class MonitorManager extends Manager {
     private static final int MAX_DISPLAY_RECIPIENTS = 30;
-
-    private final Server server;
-    @SuppressWarnings("UnusedDeclaration")
-    private final Logger logger;
 
     @SuppressWarnings("deprecation")
     private WeakReference<PlayerChatEvent> previousEvent;
     private Set<WeakReference<Player>> previousRecipients;
     private boolean previousCanceled;
 
+    public MonitorManager(Server server, Logger logger, MCPerfPlugin plugin) {
+        super(server, logger, plugin);
+    }
+
     private void send(String message) {
-        server.getConsoleSender().sendMessage(message);
+        getServer().getConsoleSender().sendMessage(message);
     }
 
     @SuppressWarnings("UnusedDeclaration")
     private void send(String... lines) {
-        server.getConsoleSender().sendMessage(lines);
+        getServer().getConsoleSender().sendMessage(lines);
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
@@ -67,7 +63,7 @@ public class MonitorManager implements Listener {
         String messageFormat = event.getFormat();
         Set<Player> recipients = event.getRecipients();
         int recipCount = recipients.size();
-        int totalCount = server.getOnlinePlayers().size();
+        int totalCount = getServer().getOnlinePlayers().size();
 
         String prefix;
         if (intercept) {

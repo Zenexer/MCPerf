@@ -1,7 +1,6 @@
 package com.earth2me.mcperf;
 
 import com.google.common.base.Joiner;
-import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
@@ -9,11 +8,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRegisterChannelEvent;
 import org.bukkit.event.player.PlayerUnregisterChannelEvent;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.bukkit.plugin.messaging.PluginMessageRecipient;
 
@@ -26,15 +23,10 @@ import java.util.stream.Stream;
 //import io.netty.buffer.Unpooled;
 
 
-@RequiredArgsConstructor
-public class PluginMessageManager implements PluginMessageListener, Listener {
+public class PluginMessageManager extends Manager implements PluginMessageListener {
     private final static long RECHECK_DELAY = 2 * 20;
 
     private final static Map<String, String> channelDescriptions;
-
-    private final Server server;
-    private final Logger logger;
-    private final Plugin plugin;
 
     //private WeakHashMap<Player, FmlInfo> fmls;
 
@@ -46,6 +38,11 @@ public class PluginMessageManager implements PluginMessageListener, Listener {
         channelDescriptions = Collections.unmodifiableMap(_channelDescriptions);
     }
 
+    public PluginMessageManager(Server server, Logger logger, MCPerfPlugin plugin) {
+        super(server, logger, plugin);
+    }
+
+    @SuppressWarnings("unused")
     private long getRecheckDelay() {
         return RECHECK_DELAY;
     }
@@ -57,12 +54,12 @@ public class PluginMessageManager implements PluginMessageListener, Listener {
         registerDuplex("FML|HS");
         registerDuplex("FML|MP");
 
-        server.getPluginCommand("chans").setExecutor(this::onChansCommand);
+        getServer().getPluginCommand("chans").setExecutor(this::onChansCommand);
     }
 
     public void unregister() {
-        Bukkit.getMessenger().unregisterIncomingPluginChannel(plugin);
-        Bukkit.getMessenger().unregisterOutgoingPluginChannel(plugin);
+        Bukkit.getMessenger().unregisterIncomingPluginChannel(getPlugin());
+        Bukkit.getMessenger().unregisterOutgoingPluginChannel(getPlugin());
 
 		/*
         if (fmls != null)
@@ -74,11 +71,11 @@ public class PluginMessageManager implements PluginMessageListener, Listener {
     }
 
     private void registerRx(String channel) {
-        Bukkit.getMessenger().registerIncomingPluginChannel(plugin, channel, this);
+        Bukkit.getMessenger().registerIncomingPluginChannel(getPlugin(), channel, this);
     }
 
     private void registerTx(String channel) {
-        Bukkit.getMessenger().registerOutgoingPluginChannel(plugin, channel);
+        Bukkit.getMessenger().registerOutgoingPluginChannel(getPlugin(), channel);
     }
 
     private void registerDuplex(String channel) {
@@ -108,10 +105,10 @@ public class PluginMessageManager implements PluginMessageListener, Listener {
                 return Util.denyPermission(sender);
             }
 
-            players = server.getOnlinePlayers().stream().map(p -> p);  // Gets around buggy generics
+            players = getServer().getOnlinePlayers().stream().map(p -> p);  // Gets around buggy generics
         } else {
             players = Stream.of(args)
-                    .map(server::getPlayer)
+                    .map(getServer()::getPlayer)
                     .filter(java.util.Objects::nonNull);
         }
 
@@ -139,6 +136,7 @@ public class PluginMessageManager implements PluginMessageListener, Listener {
         return true;
     }
 
+    @SuppressWarnings("unused")
     public boolean checkChannels(Player player) {
         Set<String> channels = player.getListeningPluginChannels();
         List<String> warnings = channelDescriptions.entrySet().stream()
@@ -161,8 +159,8 @@ public class PluginMessageManager implements PluginMessageListener, Listener {
 
     public void alert(String message) {
         Stream.concat(
-                Stream.of(server.getConsoleSender()),
-                server.getOperators().stream()
+                Stream.of(getServer().getConsoleSender()),
+                getServer().getOperators().stream()
                         .filter(p -> p instanceof Player)
                         .map(p -> (CommandSender) p)
         ).forEach(s -> s.sendMessage(message));
@@ -182,7 +180,7 @@ public class PluginMessageManager implements PluginMessageListener, Listener {
 
         switch (channel) {
             case "FML":  // Broken at the moment
-				/*
+                /*
 				player.sendPluginMessage(plugin, channel, new byte[] {
 					(byte)FmlPacketType.INIT_HANDSHAKE.ordinal(),
 					(byte)FmlSide.CLIENT.ordinal(),
@@ -228,7 +226,7 @@ public class PluginMessageManager implements PluginMessageListener, Listener {
     }
 
     private void debug(String format, Object... args) {
-        server.getConsoleSender().sendMessage(String.format(format, args));
+        getServer().getConsoleSender().sendMessage(String.format(format, args));
     }
 
 	/*
