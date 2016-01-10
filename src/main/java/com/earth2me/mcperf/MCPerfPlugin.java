@@ -51,6 +51,7 @@ public class MCPerfPlugin extends JavaPlugin {
         validityManager.setConfig(new ValidityConfiguration(config));
 
         screeningManager.setEnabled(config.getBoolean("screeningManager.enabled", screeningManager.isEnabled()));
+        screeningManager.setGracePeriod(config.getLong("screeningManager.gracePeriod", screeningManager.getGracePeriod()));
     }
 
     @Override

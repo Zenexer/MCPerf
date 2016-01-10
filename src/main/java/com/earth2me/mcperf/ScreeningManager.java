@@ -1,6 +1,11 @@
 package com.earth2me.mcperf;
 
 import lombok.Getter;
+import lombok.Setter;
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -13,24 +18,51 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
+import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 
 import java.util.Base64;
+import java.util.ConcurrentModificationException;
 import java.util.Random;
 import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public final class ScreeningManager extends Manager {
+    // Don't use SecureRandom; no reason to waste entropy on this.
+    private static final Random random = new Random();
+
     private final WeakHashMap<Player, Info> info = new WeakHashMap<>();
+
+    @Getter
+    @Setter
+    private long gracePeriod = 20;
 
     public ScreeningManager(Server server, Logger logger, MCPerfPlugin plugin) {
         super(server, logger, plugin, false);
 
         getServer().getPluginCommand("screen").setExecutor(this::onCommand);
+    }
+
+    @Override
+    public synchronized void setEnabled(boolean enabled) {
+        super.setEnabled(enabled);
+
+        if (!enabled) {
+            // This could potentially become a threading issue due to GC/async events; not much
+            // we can do about it, though.
+            try {
+                info.values().forEach(Info::clear);
+            } catch (ConcurrentModificationException e) {
+                // Yeah... that happened.  Edge case, one or two people get kicked.
+                getLogger().log(Level.WARNING, "[MCPerf] Couldn't clear all kill tasks due to concurrency issue: " + e.getMessage(), e);
+            }
+            // Don't clear it in case users respond to tests; we want to block those messages.
+        }
     }
 
     private Info getInfo(Player player) {
@@ -45,8 +77,19 @@ public final class ScreeningManager extends Manager {
         return i;
     }
 
-    private void fail(Player player) {
-        player.kickPlayer("We don't allow hack clients.");
+    private void fail(Player player, boolean caught) {
+        getServer().getScheduler().callSyncMethod(getPlugin(), () -> {
+            getInfo(player).clear();
+
+            if (caught) {
+                player.kickPlayer("We don't allow hack clients.");
+                Util.sendOpMessage(getServer(), "Caught %s with a hack client.", player.getName());
+            } else {
+                player.kickPlayer("You failed to respond to the captcha in time.");
+            }
+
+            return null;
+        });
     }
 
     private void pass(Player player) {
@@ -60,21 +103,41 @@ public final class ScreeningManager extends Manager {
         }
     }
 
-    private <T extends Event & Cancellable> void screen(Player player, T event) {
+    private <T extends Event & Cancellable> void screen(final Player player, T event) {
         if (!isEnabled()) {
             return;
         }
 
         try {
-            Info i = getInfo(player);
+            final Info i = getInfo(player);
             if (i.isChecked()) {
                 return;
             }
 
-            player.sendRawMessage(i.getTestJson());
+            long time = player.getWorld().getFullTime();
+            long last = i.getLastMessageTime();
+            if (time < last || time - 20 >= last) {
+                i.setLastMessageTime(time);
+                getServer().getScheduler().scheduleSyncDelayedTask(getPlugin(), () -> {
+                    if (!i.isChecked()) {
+                        for (int n = 0; n < 5; n++) {
+                            player.spigot().sendMessage(i.getMessage());
+                        }
+                    }
+                }, 2);
+                player.spigot().sendMessage(i.getMessage());
+            }
 
             if (event != null) {
                 event.setCancelled(true);
+            }
+
+            if (gracePeriod > 0 && i.getKillTask() < 0) {
+                i.setKillTask(getServer().getScheduler().scheduleSyncDelayedTask(getPlugin(), () -> {
+                    if (player.isOnline() && !i.isChecked()) {
+                        fail(player, false);
+                    }
+                }, gracePeriod * 20));
             }
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Exception while screening player: " + e.getMessage(), e);
@@ -97,31 +160,39 @@ public final class ScreeningManager extends Manager {
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerChatEvent(@SuppressWarnings("deprecation") PlayerChatEvent event) {
-        if (!isEnabled()) {
-            return;
-        }
-
+    public void onAsyncPlayerChatEvent(AsyncPlayerChatEvent event) {
         try {
             final Player player = event.getPlayer();
-            Info i = getInfo(player);
+            String message = event.getMessage();
+            Info i = isEnabled() ? getInfo(player) : getInfo(player, false);
 
-            if (!i.isChecked()) {
-                event.setCancelled(true);
-
-                String message = event.getMessage();
-                if (message.equals(i.getToken())) {  // Test this first in case of bots/etc.
-                    // Hack client.
-                    fail(player);
-                } else if (message.equals(i.getTokenWithPrefix())) {
-                    pass(player);
-                } else {
-                    screen(player, null);
+            if (!isEnabled() || i.isChecked()) {
+                if (message.equals(i.getTokenWithPrefix())) {
+                    cancelEvent(event);
                 }
+                return;
+            }
+
+            cancelEvent(event);
+
+            if (message.equals(i.getToken())) {  // Test this first in case of bots/etc.
+                // Hack client.
+                fail(player, true);
+            } else if (message.equals(i.getTokenWithPrefix())) {
+                pass(player);
+            } else {
+                screen(player, null);
             }
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "[MCPerf] Exception while processing player chat event for screening: " + e.getMessage(), e);
         }
+    }
+
+    private static void cancelEvent(AsyncPlayerChatEvent event) {
+        event.setCancelled(true);
+        event.setMessage("");
+        event.setFormat("");
+        event.getRecipients().clear();
     }
 
     private boolean onCommand(final CommandSender sender, Command command, String label, String[] args) {
@@ -164,23 +235,37 @@ public final class ScreeningManager extends Manager {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        info.remove(event.getPlayer());
+    public void onPlayerLeave(PlayerQuitEvent event) {
+        onPlayerLeave(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onPlayerKick(PlayerKickEvent event) {
-        info.remove(event.getPlayer());
+    public void onPlayerLeave(PlayerKickEvent event) {
+        onPlayerLeave(event.getPlayer());
+    }
+
+    private void onPlayerLeave(Player player) {
+        Info i = info.remove(player.getPlayer());
+
+        if (i != null) {
+            i.clear();
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onScreen(PlayerCommandPreprocessEvent event) {
         screen(event.getPlayer(), event);
+
+        if (event.isCancelled()) {
+            event.setMessage("/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxx");
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onScreen(PlayerMoveEvent event) {
-        screen(event.getPlayer(), event);
+        if (!event.getFrom().toVector().toBlockVector().equals(event.getTo().toVector().toBlockVector())) {
+            screen(event.getPlayer(), event);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -189,12 +274,22 @@ public final class ScreeningManager extends Manager {
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
+    public void onScreen(CraftItemEvent event) {
+        screen(event.getWhoClicked(), event);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onScreen(PlayerDropItemEvent event) {
         screen(event.getPlayer(), event);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    public void onScreen(PlayerBucketEvent event) {
+    public void onScreen(PlayerBucketFillEvent event) {
+        screen(event.getPlayer(), event);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onScreen(PlayerBucketEmptyEvent event) {
         screen(event.getPlayer(), event);
     }
 
@@ -205,16 +300,6 @@ public final class ScreeningManager extends Manager {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onScreen(PlayerPortalEvent event) {
-        screen(event.getPlayer(), event);
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onScreen(PlayerTeleportEvent event) {
-        screen(event.getPlayer(), event);
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onScreen(PlayerVelocityEvent event) {
         screen(event.getPlayer(), event);
     }
 
@@ -250,6 +335,11 @@ public final class ScreeningManager extends Manager {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onScreen(PlayerShearEntityEvent event) {
+        screen(event.getPlayer(), event);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onScreen(PlayerTeleportEvent event) {
         screen(event.getPlayer(), event);
     }
 
@@ -319,18 +409,21 @@ public final class ScreeningManager extends Manager {
         screen(event.getDamager(), event);
     }
 
-    private static class Info {
-        // Don't use SecureRandom; no reason to waste entropy on this.
-        private static final Random random = new Random();
 
+    private class Info {
+        private AtomicBoolean checked = new AtomicBoolean(false);
         @Getter
-        private boolean checked = false;
+        private volatile String token;
         @Getter
-        private String token;
+        private volatile String tokenWithPrefix;
         @Getter
-        private String tokenWithPrefix;
+        private volatile BaseComponent[] message;
         @Getter
-        private String testJson;
+        @Setter
+        private volatile long lastMessageTime;
+        @Getter
+        @Setter
+        private volatile int killTask = -1;
 
         public Info() {
             generateToken();
@@ -339,26 +432,50 @@ public final class ScreeningManager extends Manager {
         private void generateToken() {
             byte[] nonsense = new byte[18];  // 24 chars
             random.nextBytes(nonsense);
-            token = ".x Ignore this. " + Base64.getEncoder().encodeToString(nonsense);
+            token = ".x ignore this " + Base64.getEncoder().encodeToString(nonsense).toLowerCase();
             tokenWithPrefix = ".say " + token;
-            testJson = "{\"text\":\"You need to CLICK HERE before you can play.\",\"clickEvent\":{\"action\":\"run_command\",\"value\":\"" + tokenWithPrefix + "\"}}";
+            lastMessageTime = Long.MAX_VALUE;
+
+            message = new ComponentBuilder("You need to ")
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, tokenWithPrefix))
+                    .append("CLICK HERE")
+                    .retain(ComponentBuilder.FormatRetention.EVENTS)
+                    .underlined(true)
+                    .color(ChatColor.LIGHT_PURPLE)
+                    .append(" before you can play.")
+                    .retain(ComponentBuilder.FormatRetention.EVENTS)
+                    .create();
         }
 
-        private void clearToken() {
+        private void clear() {
+            if (killTask >= 0) {
+                try {
+                    getServer().getScheduler().cancelTask(killTask);
+                } catch (Exception e) {
+                    getLogger().log(Level.WARNING, "[MCPerf] Exception while canceling kill task: " + e.getMessage(), e);
+                }
+            }
+
             // Memory cleanup
             token = null;
-            tokenWithPrefix = null;
-            testJson = null;
+            //tokenWithPrefix = null;  // We save this so we can filter duplicate clicks.
+            message = null;
+            killTask = -1;
+            lastMessageTime = Long.MAX_VALUE;
         }
 
         public void setChecked(boolean value) {
-            checked = value;
+            checked.set(value);
 
-            if (checked) {
-                clearToken();
+            if (value) {
+                clear();
             } else {
                 generateToken();
             }
+        }
+
+        public boolean isChecked() {
+            return checked.get();
         }
     }
 }

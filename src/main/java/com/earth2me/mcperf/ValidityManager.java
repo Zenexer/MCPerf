@@ -85,14 +85,7 @@ public final class ValidityManager extends Manager {
             Player player = sender.getPlayer();
             if (player.getGameMode() == GameMode.CREATIVE) {
                 // TODO: Kick ass
-                Stream.concat(
-                        Stream.of(getServer().getConsoleSender()),
-                        getServer().getOnlinePlayers().stream().filter(Player::isOp)
-                ).forEach(s -> s.sendMessage(String.format(
-                        "/!\\ MCPerf /!\\ Caught %s with an invalid/modded stack of %s",
-                        player.getName(),
-                        stack
-                )));
+                Util.sendOpMessage(getServer(), "Caught %s with an invalid/modded stack of %s", player.getName(), stack);
             }
         }
 
