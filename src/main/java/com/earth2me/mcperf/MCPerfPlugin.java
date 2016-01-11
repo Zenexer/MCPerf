@@ -26,6 +26,8 @@ public class MCPerfPlugin extends JavaPlugin {
     private PluginMessageManager pluginMessageManager;
     @Getter
     private ScreeningManager screeningManager;
+    @Getter
+    private HeuristicsManager heuristicsManager;
 
     private final List<Manager> managers = new ArrayList<>();
 
@@ -52,20 +54,34 @@ public class MCPerfPlugin extends JavaPlugin {
 
         screeningManager.setEnabled(config.getBoolean("screeningManager.enabled", screeningManager.isEnabled()));
         screeningManager.setGracePeriod(config.getLong("screeningManager.gracePeriod", screeningManager.getGracePeriod()));
+
+        heuristicsManager.setEnabled(config.getBoolean("heuristicsManager.enabled", heuristicsManager.isEnabled()));
+        heuristicsManager.setSignificantMovement(config.getDouble("heuristicsManager.significantMovement", heuristicsManager.getSignificantMovement()));
+        heuristicsManager.setTimeout(config.getLong("heuristicsManager.timeout", heuristicsManager.getTimeout()));
+        heuristicsManager.setThreshold(config.getInt("heuristicsManager.threshold", heuristicsManager.getThreshold()));
+        heuristicsManager.setMaxBlackmarks(config.getInt("heuristicsManager.maxBlackmarks", heuristicsManager.getMaxBlackmarks()));
+        heuristicsManager.setForgivenOnDeath(config.getInt("heuristicsManager.forgivenOnDeath", heuristicsManager.getForgivenOnDeath()));
+        heuristicsManager.setBlackmarksTimeout(config.getInt("heuristicsManager.blackmarksTimeout", heuristicsManager.getBlackmarksTimeout()));
+        heuristicsManager.setBanReason(config.getString("heuristicsManager.banReason", heuristicsManager.getBanReason()));
+        heuristicsManager.setBanDuration(config.getInt("heuristicsManager.banDuration", heuristicsManager.getBanDuration()));
+        heuristicsManager.setBanSource(config.getString("heuristicsManager.banSource", heuristicsManager.getBanSource()));
+        //heuristicsManager.set(config.get("heuristicsManager.", heuristicsManager.get()));
     }
 
+    @SuppressWarnings("RedundantArrayCreation")  // Permits trailing comma
     @Override
     public void onEnable() {
         ensureConfig();
 
-        managers.addAll(Arrays.asList(
+        managers.addAll(Arrays.asList(new Manager[] {
                 securityManager = new SecurityManager(getServer(), getLogger(), this),
                 monitorManager = new MonitorManager(getServer(), getLogger(), this),
                 entityManager = new EntityManager(getServer(), getLogger(), this),
                 validityManager = new ValidityManager(getServer(), getLogger(), this),
                 pluginMessageManager = new PluginMessageManager(getServer(), getLogger(), this),
-                screeningManager = new ScreeningManager(getServer(), getLogger(), this)
-        ));
+                screeningManager = new ScreeningManager(getServer(), getLogger(), this),
+                heuristicsManager = new HeuristicsManager(getServer(), getLogger(), this),
+        }));
         pluginMessageManager.register();
 
         // Listeners must already be instantiated.

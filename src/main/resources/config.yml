@@ -27,3 +27,14 @@ validityManager:
 screeningManager:
   enabled: false
   gracePeriod: 20  # Seconds
+heuristicsManager:
+  enabled: true
+  significantMovement: 0.02  # Blocks per tick (between hit attempts)
+  timeout: 100  # After this many ticks without a hit attempt, score will reset
+  threshold: 10  # Consecutive hits before giving blackmark (0 - 64)
+  maxBlackmarks: 4  # Cumulative blackmarks before ban
+  forgivenOnDeath: 2  # Number of blackmarks forgiven on death
+  blackmarksTimeout: 180  # After this many seconds without receiving a blackmark, all blackmarks will be cleared
+  banReason: 'Cheating'
+  banDuration: 3  # In days; -1 for permanent (not recommended), 0 to kick without ban
+  banSource: 'Plugin:MCPerf'
