@@ -17,6 +17,8 @@ public abstract class Manager implements Listener {
     private final Server server;
     @Getter
     private final MCPerfPlugin plugin;
+    @Getter
+    private final PluginCommandSender commandSender;
 
     public Manager(Server server, Logger logger, MCPerfPlugin plugin) {
         this(server, logger, plugin, true);
@@ -27,5 +29,14 @@ public abstract class Manager implements Listener {
         this.logger = logger;
         this.plugin = plugin;
         this.enabled = enabled;
+        this.commandSender = new PluginCommandSender(server, getClass().getSimpleName());
+    }
+
+    public void dispatchCommand(String command) {
+        getServer().dispatchCommand(getCommandSender(), command);
+    }
+
+    public void dispatchCommand(String format, Object... args) {
+        dispatchCommand(String.format(format, args));
     }
 }

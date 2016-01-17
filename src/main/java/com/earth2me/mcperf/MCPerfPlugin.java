@@ -56,15 +56,8 @@ public class MCPerfPlugin extends JavaPlugin {
         screeningManager.setGracePeriod(config.getLong("screeningManager.gracePeriod", screeningManager.getGracePeriod()));
 
         heuristicsManager.setEnabled(config.getBoolean("heuristicsManager.enabled", heuristicsManager.isEnabled()));
-        heuristicsManager.setSignificantMovement(config.getDouble("heuristicsManager.significantMovement", heuristicsManager.getSignificantMovement()));
-        heuristicsManager.setTimeout(config.getLong("heuristicsManager.timeout", heuristicsManager.getTimeout()));
-        heuristicsManager.setThreshold(config.getInt("heuristicsManager.threshold", heuristicsManager.getThreshold()));
-        heuristicsManager.setMaxBlackmarks(config.getInt("heuristicsManager.maxBlackmarks", heuristicsManager.getMaxBlackmarks()));
-        heuristicsManager.setForgivenOnDeath(config.getInt("heuristicsManager.forgivenOnDeath", heuristicsManager.getForgivenOnDeath()));
-        heuristicsManager.setBlackmarksTimeout(config.getInt("heuristicsManager.blackmarksTimeout", heuristicsManager.getBlackmarksTimeout()));
-        heuristicsManager.setBanReason(config.getString("heuristicsManager.banReason", heuristicsManager.getBanReason()));
-        heuristicsManager.setBanDuration(config.getInt("heuristicsManager.banDuration", heuristicsManager.getBanDuration()));
-        heuristicsManager.setBanSource(config.getString("heuristicsManager.banSource", heuristicsManager.getBanSource()));
+        heuristicsManager.setDebugEnabled(config.getBoolean("heuristicsManager.debugEnabled", heuristicsManager.isDebugEnabled()));
+        heuristicsManager.setCommands(config.contains("heuristicsManager.commands") ? config.getStringList("heuristicsManager.commands") : heuristicsManager.getCommands());
         //heuristicsManager.set(config.get("heuristicsManager.", heuristicsManager.get()));
     }
 

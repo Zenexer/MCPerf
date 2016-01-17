@@ -166,6 +166,10 @@ public final class ScreeningManager extends Manager {
             String message = event.getMessage();
             Info i = isEnabled() ? getInfo(player) : getInfo(player, false);
 
+            if (i == null || message == null) {
+                return;
+            }
+
             if (!isEnabled() || i.isChecked()) {
                 if (message.equals(i.getTokenWithPrefix())) {
                     cancelEvent(event);
