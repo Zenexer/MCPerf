@@ -83,7 +83,7 @@ public final class ScreeningManager extends Manager {
 
             if (caught) {
                 player.kickPlayer("We don't allow hack clients.");
-                Util.sendOpMessage(getServer(), "Caught %s with a hack client.", player.getName());
+                Util.sendAlert(getServer(), "Caught %s with a hack client.", player.getName());
             } else {
                 player.kickPlayer("You failed to respond to the captcha in time.");
             }
@@ -134,7 +134,16 @@ public final class ScreeningManager extends Manager {
 
             if (gracePeriod > 0 && i.getKillTask() < 0) {
                 i.setKillTask(getServer().getScheduler().scheduleSyncDelayedTask(getPlugin(), () -> {
-                    if (player.isOnline() && !i.isChecked()) {
+                    if (!player.isOnline()) {
+                        return;
+                    }
+
+                    if (getInfo(player, false) != i) {
+                        getLogger().log(Level.WARNING, "Duplicate or missing screening info for player: " + player.getName());
+                        return;
+                    }
+
+                    if (!i.isChecked()) {
                         fail(player, false);
                     }
                 }, gracePeriod * 20));
@@ -152,7 +161,11 @@ public final class ScreeningManager extends Manager {
 
         try {
             Player player = event.getPlayer();
-            info.put(player, new Info());
+
+            Info i = new Info();
+            i.setChecked(false);
+            info.put(player, i);
+
             screen(player, null);
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "[MCPerf] Screening exception on player join: " + e.getMessage(), e);
@@ -415,7 +428,7 @@ public final class ScreeningManager extends Manager {
 
 
     private class Info {
-        private AtomicBoolean checked = new AtomicBoolean(false);
+        private AtomicBoolean checked = new AtomicBoolean(true);
         @Getter
         private volatile String token;
         @Getter

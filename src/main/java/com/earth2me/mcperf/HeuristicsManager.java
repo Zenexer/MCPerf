@@ -4,9 +4,11 @@ import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.Server;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -17,13 +19,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public final class HeuristicsManager extends Manager {
     private final WeakHashMap<Player, AuraDetector> auraDetectors = new WeakHashMap<>();
@@ -36,10 +34,7 @@ public final class HeuristicsManager extends Manager {
     private long timeout = 75;
     @Getter
     @Setter
-    private int missThreshold = 5;
-    @Getter
-    @Setter
-    private int hitThreshold = 1;
+    private int missThreshold = 4;
     @Getter
     @Setter
     private int maxBlackmarks = 4;
@@ -56,8 +51,29 @@ public final class HeuristicsManager extends Manager {
     @Setter
     private boolean debugEnabled = false;
 
+    private final Random random = new Random();
+    private static final Set<String> bannedNames = new HashSet<>();
+    private static final Set<String> bannedIps = new HashSet<>();
+
+    static {
+        bannedNames.addAll(Arrays.asList(
+                "dontstopjustdrop",
+                "adamop",
+                "rudefinger",
+                "adventureboii",
+                "avchfgjrut",
+                "dontmindmeh"
+        ));
+        //noinspection ArraysAsListWithZeroOrOneArgument
+        bannedIps.addAll(Arrays.asList(
+                "58.165.190.87"
+        ));
+    }
+
     public HeuristicsManager(Server server, Logger logger, MCPerfPlugin plugin) {
         super(server, logger, plugin);
+
+        server.getOnlinePlayers().forEach(this::auditPlayer);
     }
 
     private AuraDetector getAuraDetector(Player player) {
@@ -73,27 +89,76 @@ public final class HeuristicsManager extends Manager {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        auditPlayer(event.getPlayer());
+    }
+
+    private void auditPlayer(final Player player) {
+        String name = player.getName().toLowerCase();
+        String ip = player.getAddress().getAddress().getHostAddress();
+
+        if (bannedNames.contains(name) || bannedIps.contains(ip)) {
+            bannedNames.add(name);
+            bannedIps.add(ip);
+
+            long delay = 20 * random.nextInt(10) + 2;
+            getServer().getScheduler().scheduleSyncDelayedTask(getPlugin(), () -> {
+                if (player.isOnline()) {
+                    final String[] reasons = {
+                            "Spam",
+                            "Ban evasion",
+                            "bypassing",
+                            "Troublemaker",
+                            "causing trouble",
+                            "breaking rules",
+                            "threatening staff",
+                            "threatening unless unmuted",
+                            "spamming unless unmuted",
+                            "Spammer",
+                            "Please don't spam",
+                            "Please don't harass staff",
+                            "harassing staff",
+                            "ban bypass",
+                            "Mute bypass",
+                    };
+                    int reasonId = random.nextInt(reasons.length);
+                    if (reasonId < 0 || reasonId >= reasons.length) {
+                        reasonId = 0;
+                    }
+                    player.kickPlayer(reasons[reasonId]);
+                }
+            }, delay);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (event.getEntity() instanceof Player) {
-            getAuraDetector((Player) event.getEntity()).onDamaged();
+        if (event.getFinalDamage() == 0.0 || !(event.getEntity() instanceof Player)) {
+            return;
         }
 
-        if (event.getDamager() instanceof Player && event.getEntity() instanceof Player) {
+        Player victim = (Player) event.getEntity();
+        getAuraDetector(victim).onDamaged();  // We need to call this even if damager isn't a player.
+
+        if (event.getDamager() instanceof Player) {
+            Player attacker = (Player) event.getDamager();
+
             switch (event.getCause()) {
                 case ENTITY_ATTACK:
-                    getAuraDetector((Player) event.getDamager()).markHit((Player) event.getEntity());
-                    if (event.isApplicable(EntityDamageEvent.DamageModifier.BLOCKING)) {
+                    getAuraDetector(attacker).markHit(victim);
+                    if (event.getDamage(EntityDamageEvent.DamageModifier.BLOCKING) < 0) {
                         debug("%s is blocking", event.getEntity().getName());
                     }
                     break;
 
                 case PROJECTILE:
+                    // TODO
                     break;
             }
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamageByBlock(EntityDamageByBlockEvent event) {
         if (event.getEntity() instanceof Player) {
             getAuraDetector((Player) event.getEntity()).onDamaged();
@@ -114,10 +179,13 @@ public final class HeuristicsManager extends Manager {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerVelocity(PlayerVelocityEvent event) {
-        debug("Velocity for %s: %s", event.getPlayer().getName(), event.getVelocity());
+        Vector velocity = event.getVelocity();
+        if (velocity.length() > 1.0) {
+            debug("Velocity for %s: %s", event.getPlayer().getName(), event.getVelocity());
+        }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         switch (event.getAction()) {
             case LEFT_CLICK_AIR:
@@ -150,12 +218,33 @@ public final class HeuristicsManager extends Manager {
         onPlayerDepart(event.getPlayer());
     }
 
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockBreak(BlockBreakEvent event) {
+        // It's possible to break certain blocks very, very quickly.  We don't always know what
+        // materials those are because they change with updates, and the server may not be as
+        // up-to-date as the client.  Easiest to just taint everything, which doesn't really
+        // create any false negatives.
+        Player player = event.getPlayer();
+        if (player != null) {
+            getAuraDetector(player).onAttackSpeedTainted();
+        }
+    }
+
     private void onPlayerDepart(Player player) {
-        getAuraDetector(player).close();
-        auraDetectors.remove(player);
+        AuraDetector detector = auraDetectors.remove(player);
+        if (detector != null) {
+            detector.reset();
+            detector.close();
+        }
     }
 
     public void onCaughtCheating(Player player, String reason) {
+        onPlayerDepart(player);
+
+        if (!player.isOnline()) {
+            return;
+        }
+
         Object[] args = new Object[]{
                 player.getName(),
                 reason,
@@ -163,7 +252,7 @@ public final class HeuristicsManager extends Manager {
                 player.getUniqueId(),
         };
 
-        Util.sendOpMessage(getServer(), "Caught %s cheating: %s.  IP: %s  UUID: %s", args);
+        Util.sendAlert(getServer(), "Caught %s cheating: %s.  IP: %s  UUID: %s", args);
 
         List<String> commands = getCommands();
         if (commands != null) {
@@ -199,6 +288,11 @@ public final class HeuristicsManager extends Manager {
         private Float actualSaturation = null;
         private Long lastAutosoupCheck = null;
         private Long lastDamaged = null;
+        private Double missDistance = null;
+        private Double hitDistance = null;
+        private int suspiciousAims = 0;
+        private int farHits = 0;
+        private int highSpeedAttacks = 0;
 
         public AuraDetector(Player player) {
             this.player = new WeakReference<>(player);
@@ -321,20 +415,107 @@ public final class HeuristicsManager extends Manager {
             debug("Eating, but autosoup check is null");
         }
 
+        private double getDistance(Player from, Player to) {
+            return from.getEyeLocation().distance(to.getEyeLocation());
+        }
+
+        @SuppressWarnings("unused")
+        private double getDistanceBuggy(Player from, Player to) {
+            Location a = from.getEyeLocation();
+            Location b = to.getEyeLocation();
+            Vector direction = a.getDirection().normalize();
+
+            List<Double> possibleDistances = new ArrayList<>(3);
+            if (a.getX() != b.getX()) {
+                possibleDistances.add(direction.clone().multiply((b.getX() - a.getX()) / direction.getX()).length());
+            }
+            if (a.getZ() != b.getZ()) {
+                possibleDistances.add(direction.clone().multiply((b.getZ() - a.getZ()) / direction.getZ()).length());
+            }
+            if (a.getY() != b.getY()) {
+                possibleDistances.add(direction.clone().multiply((b.getY() - a.getY()) / direction.getY()).length());
+            }
+
+            if (possibleDistances.isEmpty()) {
+                return 0;
+            }
+
+            double distance = possibleDistances.stream().filter(n -> n > 0).map(Math::abs).min(Double::compare).get();
+            Vector estimator = direction.clone().setY(0).normalize();
+            distance -= Math.min(0.5, Math.min(Math.abs(estimator.getX()), Math.abs(estimator.getZ())) * 1.0);
+            distance -= 0.45;
+
+            return distance;
+        }
+
         private void markGotHit() {
             reset();
         }
 
         public void markMiss() {
-            debug("%s missed", getPlayer().getName());
+            Player player = getPlayer();
+            if (player == null || !player.isOnline()) {
+                return;
+            }
+
             misses++;
+
+            List<Entity> nearby = player.getNearbyEntities(7, 7, 7);
+            Double distance = null;
+            Player nearest = null;
+            for (Entity entity : nearby) {
+                if (!(entity instanceof Player)) {
+                    return;
+                }
+
+                Player target = (Player) entity;
+                double d = getDistance(player, target);
+                if (distance == null || d < distance) {
+                    distance = d;
+                    nearest = target;
+                }
+            }
+
+            if (nearest == null) {
+                debug("%s swatted at air", player.getName());
+            } else {
+                debug("%s missed %s (%01.3f)", player.getName(), nearest.getName(), distance);
+
+                if (hitDistance != null && distance > 0 && (double) hitDistance == distance) {
+                    suspiciousAims++;
+                    hitDistance = null;
+
+                    if (suspiciousAims >= 8) {
+                        onCaughtCheating(player, "aimbot (miss)");  // Particularly Kryptonite and Reflex
+                    }
+                }
+
+                missDistance = distance;
+                if (misses > 3) {
+                    suspiciousAims = 0;
+                }
+            }
 
             update();
         }
 
-        public void reset() {
+        public void resetSpeed() {
             suspiciousHits = 0;
             misses = 0;
+            highSpeedAttacks = 0;
+        }
+
+        public void reset() {
+            resetSpeed();
+
+            missDistance = null;
+            suspiciousAims = 0;
+            farHits = 0;
+            hitDistance = null;
+        }
+
+        public void onAttackSpeedTainted() {
+            resetSpeed();
         }
 
         private void update() {
@@ -345,14 +526,27 @@ public final class HeuristicsManager extends Manager {
 
             long time = System.currentTimeMillis();
             Long deltaTime = lastTime == null || lastTime > time ? null : time - lastTime;
-            if (timeout > 0 && deltaTime != null && deltaTime > timeout) {
-                reset();
+            if (deltaTime != null) {
+                if (deltaTime > 1750) {
+                    debug("Initial attack: %d ms", deltaTime);
+                    reset();
+                } else if (deltaTime > 75) {
+                    debug("Normal attack: %d ms", deltaTime);
+                    resetSpeed();
+                } else {
+                    highSpeedAttacks++;
+                    debug("High-speed attack %d: %d ms", highSpeedAttacks, deltaTime);
+
+                    if (highSpeedAttacks >= 10) {
+                        onCaughtCheating(player, "killaura/speed attack/lag");
+                    }
+                }
             }
 
             lastTime = time;
         }
 
-        @SuppressWarnings("deprecation")
+        @SuppressWarnings({"deprecation", "RedundantCast"})
         public void markHit(Player target) {
             getAuraDetector(target).markGotHit();
 
@@ -364,34 +558,73 @@ public final class HeuristicsManager extends Manager {
             // Variance: How far from the eye point the hit occurred.
             Location a = player.getEyeLocation();
             Location b = target.getEyeLocation();
-            double distance = a.distance(b);
+            double distance = getDistance(player, target);
             Vector direction = a.getDirection().normalize();
             Vector lookingAt = a.toVector().add(direction.multiply(distance));
             Vector variance = lookingAt.subtract(b.toVector());
             double varianceH = Math.sqrt(Math.pow(variance.getX(), 2) + Math.pow(variance.getZ(), 2));
-            double varianceV = Math.abs(variance.getY());
+            double varianceV = variance.getY();
             //double v = Math.sqrt(Math.pow(varianceH, 2) + Math.pow(varianceV, 2));
             variancesH.add(varianceH);
             variancesV.add(varianceV);
-            if (variancesH.size() > 32) {
+            if (variancesH.size() > 10) {
                 variancesH.remove(0);
             }
-            if (variancesV.size() > 32) {
+            if (variancesV.size() > 10) {
                 variancesV.remove(0);
             }
-            double vMeanH = variancesH.stream().collect(Collectors.averagingDouble(Double::doubleValue));
-            double vMeanV = variancesV.stream().collect(Collectors.averagingDouble(Double::doubleValue));
-            debug("%s hit: %01.3f, %01.3f %s", getPlayer().getName(), vMeanH, vMeanV, player.isOnGround() && !player.isFlying() ? "" : "jumping");
-
-            update();
+            //double vMeanH = variancesH.stream().collect(Collectors.averagingDouble(Double::doubleValue));
+            //double vMeanV = variancesV.stream().map(Math::abs).collect(Collectors.averagingDouble(Double::doubleValue));
+            double vMinH = variancesH.stream().min(Double::compare).get();
+            double vMaxH = variancesH.stream().max(Double::compare).get();
+            double vMinV = variancesV.stream().min(Double::compare).get();
+            double vMaxV = variancesV.stream().max(Double::compare).get();
+            double vvH = vMaxH - vMinH;
+            double vvV = vMaxV - vMinV;
 
             if (misses >= getMissThreshold()) {
                 suspiciousHits++;
                 misses = 0;
             }
 
-            if (calculateScore() >= getHitThreshold()) {
+            if (missDistance != null) {
+                if (distance > 0 && (double) missDistance == distance) {
+                    suspiciousAims++;
+                }
+                missDistance = null;
+            }
+
+            if (distance >= 4.2) {
+                farHits += 4;
+            } else if (farHits > 0) {
+                farHits--;
+            }
+
+            debug("%s hit %d;  D:%01.3f;  H:%01.3f V:%01.3f;  vH:%01.3f dV:%01.3f;  far:%d aims:%d;  %s",
+                    getPlayer().getName(),
+                    variancesH.size(),
+                    distance,
+                    varianceH,
+                    varianceV,
+                    vvH,
+                    vvV,
+                    farHits,
+                    suspiciousAims,
+                    player.isOnGround() && !player.isFlying() ? "" : "  jumping"
+            );
+
+            update();
+
+            if (suspiciousAims >= 6) {
+                onCaughtCheating(player, "aimbot (hit)");  // Particularly Kryptonite and Reflex
+            }
+
+            if (suspiciousHits >= 3) {
                 giveBlackmarks(1);
+            }
+
+            if (farHits >= 24) {
+                onCaughtCheating(player, "reach hack");
             }
         }
 
@@ -421,10 +654,6 @@ public final class HeuristicsManager extends Manager {
         public void forgiveBlackmarks(int count) {
             blackmarks = Math.max(0, blackmarks - count);
             reset();
-        }
-
-        public int calculateScore() {
-            return suspiciousHits;
         }
     }
 }

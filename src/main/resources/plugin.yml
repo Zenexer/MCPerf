@@ -82,7 +82,8 @@ permissions:
       mcperf.screen: true
       mcperf.screen.multiple: true
       mcperf.screen.all: true
-      mcperf.chans.*: true
+      mcperf.screen.*: true
+      mcperf.receivealerts: true
   mcperf.reload:
     description: 'Gives access to /mcperf; used to reload configuration'
   mcperf.chans.*:
@@ -109,3 +110,5 @@ permissions:
       mcperf.screen: true
       mcperf.screen.multiple: true
       mcperf.screen.all: true
+  mcperf.receivealerts:
+    description: 'Receive op notices about cheaters and similar discrepancies'

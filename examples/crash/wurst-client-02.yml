@@ -1,0 +1,280 @@
+? ''
+: - HurtByTimestamp: 0
+  - bukkit:
+    - newLevel: 0
+    - newExp: 0
+    - newTotalExp: 0
+    - firstPlayed: !long "1428849313262"
+    - lastKnownName: DSB_HD
+    - keepLevel: !byte "0"
+    - expToDrop: 0
+    - lastPlayed: !long "1446568232388"
+  - SleepTimer: !short "0"
+  - SpawnForced: !byte "0"
+  - Attributes: !list_compound
+    - - Base: !double "20.0"
+      - Name: generic.maxHealth
+    - - Base: !double "0.0"
+      - Name: generic.knockbackResistance
+    - - Base: !double "0.10000000149011612"
+      - Name: generic.movementSpeed
+    - - Base: !double "1.0"
+      - Name: generic.attackDamage
+  - Invulnerable: !byte "0"
+  - PortalCooldown: 0
+  - AbsorptionAmount: 0.0
+  - abilities:
+    - invulnerable: !byte "1"
+    - mayfly: !byte "1"
+    - instabuild: !byte "1"
+    - walkSpeed: 0.10000000149011612
+    - mayBuild: !byte "1"
+    - flying: !byte "0"
+    - flySpeed: 0.05000000074505806
+  - FallDistance: 0.0
+  - DeathTime: !short "0"
+  - XpSeed: 60835176
+  - WorldUUIDMost: !long "-3672257974551885349"
+  - Spigot.ticksLived: 1586428
+  - HealF: 20.0
+  - XpTotal: 0
+  - playerGameType: 1
+  - SelectedItem:
+    - id: minecraft:trapped_chest
+    - Count: !byte "1"
+    - Damage: !short "0"
+  - Motion: !list_double
+    - !double "0.0"
+    - !double "-0.0784000015258789"
+    - !double "0.0"
+  - SpawnY: 59
+  - UUIDLeast: !long "-5517174410668601292"
+  - Health: !short "20"
+  - SpawnZ: 11012
+  - Bukkit.updateLevel: 2
+  - foodSaturationLevel: 5.0
+  - SpawnX: -1184
+  - Air: !short "300"
+  - OnGround: !byte "1"
+  - Dimension: 12
+  - Rotation: !list_float
+    - 295.0235290527344
+    - 32.48825454711914
+  - XpLevel: 0
+  - Score: 0
+  - UUIDMost: !long "-1031287524510645019"
+  - Sleeping: !byte "0"
+  - Pos: !list_double
+    - !double "-1213.2806926186922"
+    - !double "65.0"
+    - !double "11018.125761685233"
+  - Fire: !short "-20"
+  - XpP: 0.0
+  - EnderItems: !list_end []
+  - foodLevel: 20
+  - foodExhaustionLevel: 0.0
+  - HurtTime: !short "0"
+  - SelectedItemSlot: 2
+  - SpawnWorld: plotworld
+  - WorldUUIDLeast: !long "-8121493798517876451"
+  - Inventory: !list_compound
+    - - Slot: !byte "0"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "1"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "2"
+      - id: minecraft:trapped_chest
+      - Count: !byte "1"
+      - Damage: !short "0"
+    - - Slot: !byte "3"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "4"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "5"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "6"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "7"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "8"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "9"
+      - id: minecraft:diamond_helmet
+      - Count: !byte "1"
+      - Damage: !short "0"
+    - - Slot: !byte "10"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "11"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "12"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "13"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "14"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "15"
+      - id: minecraft:chest
+      - Count: !byte "64"
+      - tag:
+        - display:
+          - Name: !!python/str "\xA76\xA7lCOPY ME"
+        - www.wurst-client.tk:
+          - www.wurst-client.tk: !list_list
+            - !list_end []
+            # ^ Repeated thousands of times
+      - Damage: !short "0"
+    - - Slot: !byte "100"
+      - id: minecraft:diamond_boots
+      - Count: !byte "1"
+      - tag:
+        - ench: !list_compound
+          - - lvl: !short "2"
+            - id: !short "4"
+          - - lvl: !short "1"
+            - id: !short "34"
+      - Damage: !short "12"
+    - - Slot: !byte "101"
+      - id: minecraft:diamond_leggings
+      - Count: !byte "1"
+      - tag:
+        - ench: !list_compound
+          - - lvl: !short "1"
+            - id: !short "0"
+      - Damage: !short "17"
+    - - Slot: !byte "102"
+      - id: minecraft:diamond_chestplate
+      - Count: !byte "1"
+      - Damage: !short "0"
+    - - Slot: !byte "103"
+      - id: minecraft:skull
+      - Count: !byte "1"
+      - tag:
+        - SkullOwner:
+          - Id: f1b02175-e040-44e5-b36f-0f1ad0391034
+          - Properties:
+            - textures: !list_compound
+              - - Signature: wawTq3O+/pT2NVfQS6TeaRQqQq70hUc4k772rws5BEWYgKih5W9U6Civ9TfVpI7jqaNWGWdEZwon1AMG2sbwJIQwJ4WZ/CtNduhaBFxfj2sB/uTKFTFB8AKfBLtLlqNlXau+L+E9mWglQ6dNboNy6EzefWfSR9DJLciwuAvUtSXGcS+T9nic7k4jvyXqpUlEjyGe3o3BFWJvUSw9nsOLAAlzy+CKE+vq78fsQtmF+avHlL0i6XN0qvvgbMNgnCmpAtNvQqnB3evD1P1maNC4S77Vcv/F7CP/te1yBFI8x9h2GkIhDdB+8ZGvNG7oTwbA1r+uPIsxi6K750gK1ghYCcHLdz7LT0g66qaDhVTITLt9iqUX10QM+eJx4RmAI/nto7+sxb+G0Rns8+nJIuW9xEGQwpK/MhAtpT+7M8RI3B8X8UX++Uq7Cb3279qzPiQEsgAb0Lh4B/EsA+oXLC8YMGfmw4vdSFvgFrcdR9/FGMRlVmBkHfHZJR7hl4hvrnrpaTYMwjCwmirqAVoGXRfnwELmg2G98bWVVZhzEpxcokizW3hD8aTRfHOTO6giTs9LQgfNFS0rYMuQxLdwMFN1F7q7mAaaL2aKS+fmUjM3QW+qaQ/pba0Rtix7c30StfAYfvf3ui18/N8DRrw0zmfyi7LmVSUvOsoXw3q26aDDlS0=
+                - Value: eyJ0aW1lc3RhbXAiOjE0NDYyNDUwOTY5NzQsInByb2ZpbGVJZCI6ImYxYjAyMTc1ZTA0MDQ0ZTViMzZmMGYxYWQwMzkxMDM0IiwicHJvZmlsZU5hbWUiOiJEU0JfSEQiLCJzaWduYXR1cmVSZXF1aXJlZCI6dHJ1ZSwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzllMWViYzEwMWFjODNiMjlhZGEyMjg3ZTU4ODEzNWIzNjU1OTRmYWY5M2E3YzVlM2NkM2RhNTQ2MjQ5N2EyMiJ9fX0=
+          - Name: DSB_HD
+        - display:
+          - Name: !!python/str "\xA7fSkull of DSB_HD"
+      - Damage: !short "3"
+  - foodTickTimer: 0
+

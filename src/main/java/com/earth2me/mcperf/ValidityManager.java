@@ -85,7 +85,7 @@ public final class ValidityManager extends Manager {
             Player player = sender.getPlayer();
             if (player.getGameMode() == GameMode.CREATIVE) {
                 // TODO: Kick ass
-                Util.sendOpMessage(getServer(), "Caught %s with an invalid/modded stack of %s", player.getName(), stack);
+                Util.sendAlert(getServer(), "Caught %s with an invalid/modded stack of %s", player.getName(), stack);
             }
         }
 
