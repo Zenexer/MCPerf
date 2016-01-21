@@ -2,10 +2,13 @@ package com.earth2me.mcperf;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -56,17 +59,12 @@ public final class HeuristicsManager extends Manager {
     private static final Set<String> bannedIps = new HashSet<>();
 
     static {
+        // TODO: migrate to separate manager
+        //noinspection SpellCheckingInspection,ArraysAsListWithZeroOrOneArgument
         bannedNames.addAll(Arrays.asList(
-                "dontstopjustdrop",
-                "adamop",
-                "rudefinger",
-                "adventureboii",
-                "avchfgjrut",
-                "dontmindmeh"
         ));
         //noinspection ArraysAsListWithZeroOrOneArgument
         bannedIps.addAll(Arrays.asList(
-                "58.165.190.87"
         ));
     }
 
@@ -161,7 +159,8 @@ public final class HeuristicsManager extends Manager {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamageByBlock(EntityDamageByBlockEvent event) {
         if (event.getEntity() instanceof Player) {
-            getAuraDetector((Player) event.getEntity()).onDamaged();
+            Player player = (Player) event.getEntity();
+            getAuraDetector(player).onDamaged();
         }
     }
 
@@ -187,10 +186,29 @@ public final class HeuristicsManager extends Manager {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.isCancelled()) {
+            return;  // Just to be safe
+        }
+
+        Player player = event.getPlayer();
+        AuraDetector detector = getAuraDetector(player);
+
         switch (event.getAction()) {
             case LEFT_CLICK_AIR:
+                detector.markMiss();
+                break;
+
             case LEFT_CLICK_BLOCK:
-                getAuraDetector(event.getPlayer()).markMiss();
+                if (event.useInteractedBlock() == Event.Result.DENY) {
+                    // We're not going to receive a BlockBreakEvent, so we need to figure out if this
+                    // type of block breaks instantly.
+                    Material material = event.getClickedBlock().getType();
+                    if (!material.isSolid()) {  // Should be good enough.
+                        return;
+                    }
+                }
+
+                detector.markMiss();
                 break;
         }
     }
@@ -224,6 +242,7 @@ public final class HeuristicsManager extends Manager {
         // materials those are because they change with updates, and the server may not be as
         // up-to-date as the client.  Easiest to just taint everything, which doesn't really
         // create any false negatives.
+
         Player player = event.getPlayer();
         if (player != null) {
             getAuraDetector(player).onAttackSpeedTainted();
@@ -298,13 +317,18 @@ public final class HeuristicsManager extends Manager {
             this.player = new WeakReference<>(player);
         }
 
-        public void onKilled(@SuppressWarnings("UnusedParameters") Player player) {
+        public void onKilled(@SuppressWarnings("UnusedParameters") Player killer) {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
+                return;
+            }
+
             scheduleAutosoupTask();
         }
 
         private void scheduleAutosoupTask() {
-            Player player = getPlayer();
-            if (player == null || !player.isOnline()) {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
                 return;
             }
 
@@ -319,8 +343,8 @@ public final class HeuristicsManager extends Manager {
         public void checkAutosoup() {
             autosoupTask = null;
 
-            Player player = getPlayer();
-            if (player == null || !player.isOnline()) {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
                 return;
             }
 
@@ -355,7 +379,7 @@ public final class HeuristicsManager extends Manager {
         }
 
         private void pushState(long time) {
-            Player player = getPlayer();
+            Player player = getPlayerIfEnabled();
             if (player == null) {
                 return;
             }
@@ -389,6 +413,11 @@ public final class HeuristicsManager extends Manager {
         }
 
         public void onDamaged() {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
+                return;
+            }
+
             lastDamaged = System.currentTimeMillis();
 
             if (lastAutosoupCheck != null) {
@@ -401,12 +430,17 @@ public final class HeuristicsManager extends Manager {
         }
 
         public void onEating() {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
+                return;
+            }
+
             if (lastAutosoupCheck != null) {
                 debug("Eating delay: %d", System.currentTimeMillis() - lastAutosoupCheck);
 
                 if (System.currentTimeMillis() - lastAutosoupCheck < 300) {
-                    //onCaughtCheating(getPlayer(), "autosoup");
-                    getLogger().log(Level.INFO, String.format("%s appears to be using autosoup (this test is inaccurate)", getPlayer().getName()));
+                    //onCaughtCheating(player, "autosoup");
+                    getLogger().log(Level.INFO, String.format("%s appears to be using autosoup (this test is inaccurate)", player.getName()));
                 }
 
                 lastAutosoupCheck = null;
@@ -453,8 +487,8 @@ public final class HeuristicsManager extends Manager {
         }
 
         public void markMiss() {
-            Player player = getPlayer();
-            if (player == null || !player.isOnline()) {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
                 return;
             }
 
@@ -519,7 +553,7 @@ public final class HeuristicsManager extends Manager {
         }
 
         private void update() {
-            Player player = getPlayer();
+            Player player = getPlayerIfEnabled();
             if (player == null) {
                 return;
             }
@@ -550,10 +584,11 @@ public final class HeuristicsManager extends Manager {
         public void markHit(Player target) {
             getAuraDetector(target).markGotHit();
 
-            Player player = getPlayer();
-            if (player == null) {
+            if (!isEnabled()) {
                 return;
             }
+
+            Player player = getPlayer();
 
             // Variance: How far from the eye point the hit occurred.
             Location a = player.getEyeLocation();
@@ -629,7 +664,12 @@ public final class HeuristicsManager extends Manager {
         }
 
         public void giveBlackmarks(int count) {
-            debug("%s got %d blackmark(s); total blackmarks: %d", getPlayer().getName(), count, blackmarks);
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
+                return;
+            }
+
+            debug("%s got %d blackmark(s); total blackmarks: %d", player.getName(), count, blackmarks);
             reset();
 
             long time = System.currentTimeMillis() / 1000L;
@@ -640,15 +680,39 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (blackmarks >= getMaxBlackmarks()) {
-                Player player = getPlayer();
-                if (player != null) {
-                    onCaughtCheating(player, "killaura/auto-click");
-                }
+                onCaughtCheating(player, "killaura/auto-click");
             }
         }
 
         public Player getPlayer() {
             return player.get();
+        }
+
+        public boolean isEnabled() {
+            return getPlayerIfEnabled() != null;
+        }
+
+        public Player getPlayerIfEnabled() {
+            Player player = this.player.get();
+
+            if (player == null || !player.isOnline()) {
+                return null;
+            }
+
+            GameMode mode = player.getGameMode();
+            switch (mode) {
+                case ADVENTURE:
+                case SURVIVAL:
+                    return player;
+
+                case CREATIVE:
+                case SPECTATOR:
+                    return null;
+
+                default:
+                    getLogger().warning(String.format("Unrecognized game mode: %s", mode));
+                    return null;
+            }
         }
 
         public void forgiveBlackmarks(int count) {
