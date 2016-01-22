@@ -20,10 +20,31 @@ public class Util {
     }
 
     public static void sendAlert(Server server, String format, Object... args) {
-        final String message = ALERT_PREFIX + String.format(format, args);
+        sendAlert(server, ALERT_PREFIX + String.format(format, args));
+    }
+
+    public static void sendAlert(Server server, String message) {
         Stream.concat(
                 Stream.of(server.getConsoleSender()),
                 server.getOnlinePlayers().stream().filter(p -> p.hasPermission("mcperf.receivealerts"))
         ).distinct().forEach(s -> s.sendMessage(message));
+    }
+
+    public static void println(Server server, String format, Object... args) {
+        println(server, String.format(format, args));
+    }
+
+    public static void println(Server server, String message) {
+        final String substitute = ChatColor.GRAY.toString();
+        final ChatColor[] replace = {
+                ChatColor.BLACK,
+                ChatColor.DARK_GRAY,
+        };
+
+        for (ChatColor color : replace) {
+            message = message.replace(color.toString(), substitute);
+        }
+
+        server.getConsoleSender().sendMessage(message);
     }
 }

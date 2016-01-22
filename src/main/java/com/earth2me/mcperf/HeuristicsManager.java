@@ -271,7 +271,7 @@ public final class HeuristicsManager extends Manager {
                 player.getUniqueId(),
         };
 
-        Util.sendAlert(getServer(), "Caught %s cheating: %s.  IP: %s  UUID: %s", args);
+        sendAlert("Caught %s cheating: %s.  IP: %s  UUID: %s", args);
 
         List<String> commands = getCommands();
         if (commands != null) {

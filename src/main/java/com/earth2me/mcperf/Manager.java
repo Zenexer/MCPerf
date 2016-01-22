@@ -39,4 +39,20 @@ public abstract class Manager implements Listener {
     public void dispatchCommand(String format, Object... args) {
         dispatchCommand(String.format(format, args));
     }
+
+    protected void println(String format, Object... args) {
+        Util.println(getServer(), format, args);
+    }
+
+    protected void println(String message) {
+        Util.println(getServer(), message);
+    }
+
+    protected void sendAlert(String format, Object... args) {
+        Util.sendAlert(getServer(), format, args);
+    }
+
+    protected void sendAlert(String message) {
+        Util.sendAlert(getServer(), message);
+    }
 }
