@@ -11,7 +11,7 @@ if [ $# -eq 0 ]; then
 fi
 
 x=0
-for i in dev kitpvp; do
+for i in "$@"; do
 	echo "Deploying to $i" >&2
 	case "$i" in
 		common)
