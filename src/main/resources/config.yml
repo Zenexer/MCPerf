@@ -29,7 +29,7 @@ screeningManager:
   enabled: false
   gracePeriod: 20  # Seconds
 heuristicsManager:
-  enabled: true
+  enabled: false
   debugEnabled: false
   commands:
     # %1$s = username

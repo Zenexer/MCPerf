@@ -69,7 +69,7 @@ public final class HeuristicsManager extends Manager {
     }
 
     public HeuristicsManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin);
+        super(server, logger, plugin, false);
 
         server.getOnlinePlayers().forEach(this::auditPlayer);
     }
