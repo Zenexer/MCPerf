@@ -11,6 +11,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 public class MCPerfPlugin extends JavaPlugin {
@@ -28,6 +29,8 @@ public class MCPerfPlugin extends JavaPlugin {
     private ScreeningManager screeningManager;
     @Getter
     private HeuristicsManager heuristicsManager;
+    @Getter
+    private BlacklistManager blacklistManager;
 
     private final List<Manager> managers = new ArrayList<>();
 
@@ -59,6 +62,9 @@ public class MCPerfPlugin extends JavaPlugin {
         heuristicsManager.setDebugEnabled(config.getBoolean("heuristicsManager.debugEnabled", heuristicsManager.isDebugEnabled()));
         heuristicsManager.setCommands(config.contains("heuristicsManager.commands") ? config.getStringList("heuristicsManager.commands") : heuristicsManager.getCommands());
         //heuristicsManager.set(config.get("heuristicsManager.", heuristicsManager.get()));
+
+        blacklistManager.setEnabled(config.getBoolean("blacklistManager.enabled", blacklistManager.isEnabled()));
+        blacklistManager.setBlocks(config.contains("blacklistManager.blocks") ? config.getIntegerList("blacklistManager.blocks") : null);
     }
 
     @SuppressWarnings("RedundantArrayCreation")  // Permits trailing comma
@@ -66,7 +72,7 @@ public class MCPerfPlugin extends JavaPlugin {
     public void onEnable() {
         ensureConfig();
 
-        managers.addAll(Arrays.asList(new Manager[] {
+        managers.addAll(Arrays.asList(new Manager[]{
                 securityManager = new SecurityManager(getServer(), getLogger(), this),
                 monitorManager = new MonitorManager(getServer(), getLogger(), this),
                 entityManager = new EntityManager(getServer(), getLogger(), this),
@@ -74,6 +80,7 @@ public class MCPerfPlugin extends JavaPlugin {
                 pluginMessageManager = new PluginMessageManager(getServer(), getLogger(), this),
                 screeningManager = new ScreeningManager(getServer(), getLogger(), this),
                 heuristicsManager = new HeuristicsManager(getServer(), getLogger(), this),
+                blacklistManager = new BlacklistManager(getServer(), getLogger(), this),
         }));
         pluginMessageManager.register();
 

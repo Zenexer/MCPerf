@@ -1,6 +1,7 @@
 package com.earth2me.mcperf.validity;
 
 import org.bukkit.Bukkit;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -9,9 +10,6 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 public abstract class MetaValidator<T extends ItemMeta> extends Validator {
-    private static final String OBFUSCATED_CLIENT_W = new String(Base64.getDecoder().decode("Lnd3dy53dXJzdC1jbGllbnQudGsK")).substring(1);
-            ;
-
     private static String versionKey;                      // Example: ".v1_8_R3"  Note the dot prefix.
     private static Class<?> craftMetaItemClass;            // org.bukkit.craftbukkit{versionKey}.inventory.CraftMetaItem
     private static Field unhandledTagsField;               // CraftMetaItem#unhandledTagsField
@@ -100,13 +98,31 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator {
         }
 
         if (unhandledTags != null && !unhandledTags.isEmpty()) {
-            StringJoiner tagText = new StringJoiner(", ");
-            unhandledTags.keySet().stream().forEach(tagText::add);
-            Bukkit.getLogger().warning(String.format("[MCPerf] Detected suspicious tags: %s with tags %s", stack.getType().name(), tagText.toString()));
+            Set<String> suspiciousTags = new HashSet<>();
 
-            if (unhandledTags.containsKey(OBFUSCATED_CLIENT_W)) {
-                onInvalid("mod/cheat client (" + OBFUSCATED_CLIENT_W + ")");
-                return false;
+            for (Map.Entry<String, Object> entry : unhandledTags.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+
+                switch (key) {
+                    case "id":
+                    case "Count":
+                    case "Damage":
+                        continue;
+
+                    case "www.wurst-client.tk":
+                        onInvalid("hack client (Wurst)");
+                        return false;
+
+                    default:
+                        suspiciousTags.add(key);
+                        break;
+                }
+            }
+
+            if (!suspiciousTags.isEmpty()) {
+                String tagText = String.join(", ", suspiciousTags);
+                Bukkit.getLogger().warning(String.format("[MCPerf] Detected suspicious tags: %s with tags %s", stack.getType().name(), tagText));
             }
         }
 

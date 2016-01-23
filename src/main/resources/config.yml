@@ -37,3 +37,5 @@ heuristicsManager:
     # %3$s = IP address
     # %4$s = UUID, with hyphens
     - 'kick %1$s [MCPerf] Cheating: %2$s'
+blacklistManager:
+  blocks: []
