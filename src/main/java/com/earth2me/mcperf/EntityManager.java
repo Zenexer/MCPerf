@@ -7,16 +7,17 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -43,6 +44,8 @@ public final class EntityManager extends Manager {
 
     public EntityManager(Server server, Logger logger, MCPerfPlugin plugin) {
         super(server, logger, plugin);
+
+        getServer().getScheduler().runTaskTimer(getPlugin(), this::cleanupProjectiles, 20 * 30, 20 * 30);
     }
 
     private static boolean isIgnoredEntityType(EntityType entityType) {
@@ -95,6 +98,142 @@ public final class EntityManager extends Manager {
 		canSpawn(location, getWorldCreatureLimit(), getNearbyCreatureLimit());
 		canSpawn(location, getWorldItemLimit(), getNearbyItemLimit());
 	}*/
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onChunkLoad(ChunkLoadEvent event) {
+        Entity[] entities = event.getChunk().getEntities();
+
+        for (Entity entity : entities) {
+            if (entity instanceof Projectile || entity instanceof Firework) {
+                entity.remove();
+                break;
+            }
+        }
+    }
+
+    public void cleanupProjectiles() {
+        List<World> worlds = getServer().getWorlds();
+        final Entity[][] entities = new Entity[worlds.size()][];
+
+        for (int w = 0; w < worlds.size(); w++) {
+            List<Entity> entityList = worlds.get(w).getEntities();
+            entities[w] = entityList.toArray(new Entity[entityList.size()]);
+        }
+
+        getServer().getScheduler().runTaskAsynchronously(getPlugin(), () -> {
+            final List<Entity> removalQueue = new LinkedList<>();
+
+            for (Entity[] we : entities) {
+                for (Entity entity : we) {
+                    int maxAge;
+
+                    switch (entity.getType()) {
+                        case ARMOR_STAND:
+                        case BLAZE:
+                        case BOAT:
+                        case CAVE_SPIDER:
+                        case CHICKEN:
+                        case COMPLEX_PART:
+                        case COW:
+                        case CREEPER:
+                        case ENDER_CRYSTAL:
+                        case ENDER_DRAGON:
+                        case ENDER_SIGNAL:
+                        case ENDERMAN:
+                        case ENDERMITE:
+                        case GIANT:
+                        case GUARDIAN:
+                        case HORSE:
+                        case IRON_GOLEM:
+                        case ITEM_FRAME:
+                        case LEASH_HITCH:
+                        case LIGHTNING:
+                        case MAGMA_CUBE:
+                        case MINECART:
+                        case MINECART_CHEST:
+                        case MINECART_COMMAND:
+                        case MINECART_FURNACE:
+                        case MINECART_HOPPER:
+                        case MINECART_MOB_SPAWNER:
+                        case MINECART_TNT:
+                        case MUSHROOM_COW:
+                        case OCELOT:
+                        case PAINTING:
+                        case PIG:
+                        case PIG_ZOMBIE:
+                        case PLAYER:
+                        case RABBIT:
+                        case SHEEP:
+                        case SILVERFISH:
+                        case SKELETON:
+                        case SLIME:
+                        case SNOWMAN:
+                        case SPIDER:
+                        case SQUID:
+                        case VILLAGER:
+                        case WEATHER:
+                        case WITCH:
+                        case WITHER:
+                        case WOLF:
+                        case ZOMBIE:
+                            continue;
+
+                        case FALLING_BLOCK:
+                        case PRIMED_TNT:
+                            maxAge = 30 * 20;
+                            break;
+
+                        case FIREWORK:
+                            maxAge = 45 * 20;
+                            break;
+
+                        case GHAST:
+                        case BAT:
+                            maxAge = 10 * 60 * 20;
+                            break;
+
+                        case DROPPED_ITEM:
+                        case EXPERIENCE_ORB:
+                            maxAge = 8 * 60 * 20;
+                            break;
+
+                        case ARROW:
+                        case EGG:
+                        case ENDER_PEARL:
+                        case FIREBALL:
+                        case FISHING_HOOK:
+                        case SMALL_FIREBALL:
+                        case SNOWBALL:
+                        case SPLASH_POTION:
+                        case THROWN_EXP_BOTTLE:
+                        case WITHER_SKULL:
+                            maxAge = 20 * 20;
+                            break;
+
+                        case UNKNOWN:
+                        default:
+                            getLogger().log(Level.WARNING, "[MCPerf] Unknown entity type: " + entity.getClass().getCanonicalName());
+
+                            if (entity instanceof Projectile) {
+                                maxAge = 20 * 20;
+                            } else {
+                                continue;
+                            }
+                            break;
+                    }
+
+                    if (entity.getTicksLived() > maxAge) {
+                        removalQueue.add(entity);
+                    }
+                }
+            }
+
+            getServer().getScheduler().callSyncMethod(getPlugin(), () -> {
+                removalQueue.forEach(Entity::remove);
+                return null;
+            });
+        });
+    }
 
     private void cleanupWorld(Location location, int limit) {
         List<Entity> entities = getWorldEntities(location);
@@ -171,12 +310,18 @@ public final class EntityManager extends Manager {
                 problemTypes.remove(EntityType.PLAYER);
 
                 // Evaluate immediately
-                final Entity[] toRemove = filteredEntityStream(entities).filter(entity -> problemTypes.contains(entity.getType())).toArray(Entity[]::new);
+                final List<Entity> toRemove = Arrays.asList(filteredEntityStream(entities)
+                        .filter(entity -> problemTypes.contains(entity.getType()))
+                        .toArray(Entity[]::new));
+
+                if (toRemove.size() >= 10) {
+                    for (int i = 0; i < 5; i++) {
+                        toRemove.remove(toRemove.size() - 1);
+                    }
+                }
 
                 getServer().getScheduler().callSyncMethod(getPlugin(), () -> {
-                    for (Entity entity : toRemove) {
-                        entity.remove();
-                    }
+                    toRemove.forEach(Entity::remove);
                     return null;
                 });
             } finally {
