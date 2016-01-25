@@ -212,6 +212,10 @@ public final class EntityManager extends Manager {
 
                         case UNKNOWN:
                         default:
+                            if (entity instanceof Creature && "CraftCreature".equals(entity.getClass().getSimpleName())) {
+                                // This happens occasionally, for some weird reason.
+                                continue;
+                            }
                             getLogger().log(Level.WARNING, "[MCPerf] Unknown entity type: " + entity.getClass().getCanonicalName());
 
                             if (entity instanceof Projectile) {

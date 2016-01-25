@@ -3,6 +3,7 @@ package com.earth2me.mcperf;
 import com.earth2me.mcperf.validity.*;
 import lombok.Getter;
 import org.bukkit.GameMode;
+import org.bukkit.Material;
 import org.bukkit.Server;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
@@ -17,12 +18,11 @@ import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.InventoryView;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.HashMap;
@@ -68,8 +68,15 @@ public final class ValidityManager extends Manager {
         getAllValidators().forEach(v -> v.setConfig(config));
     }
 
-    private void onInvalid(String propertyFormat, Sender sender, ItemStack itemStack, Object... propertyArgs) {
-        getLogger().warning(String.format("Found item stack %s:%d x%d with invalid %s for %s", itemStack.getType(), itemStack.getDurability(), itemStack.getAmount(), String.format(propertyFormat, propertyArgs), sender));
+    private void onInvalid(String property, Sender sender, ItemStack itemStack) {
+        getLogger().warning(String.format(
+                "Found item stack %s:%d x%d with invalid %s for %s",
+                itemStack.getType(),
+                itemStack.getDurability(),
+                itemStack.getAmount(),
+                property,
+                sender
+        ));
     }
 
     public boolean isValid(ItemStack stack, Sender sender, boolean strict) {
@@ -85,7 +92,7 @@ public final class ValidityManager extends Manager {
             Player player = sender.getPlayer();
             if (player.getGameMode() == GameMode.CREATIVE) {
                 // TODO: Kick ass
-                sendAlert("Caught %s with an invalid/modded stack of %s", player.getName(), stack);
+                sendAlert("Caught %s with an invalid/modded stack of %s", player.getName(), stack.getType().name());
             }
         }
 
@@ -98,11 +105,25 @@ public final class ValidityManager extends Manager {
         }
 
         Validator validator = genericValidator;
+        ItemMeta meta = stack.getItemMeta();
 
         if (stack.hasItemMeta()) {
-            validator = metaValidators.get(stack.getItemMeta().getClass());
-            if (validator == null) {
-                validator = metaValidators.get(ItemMeta.class);
+            MetaValidator<?> metaValidator = null;
+
+            for (Map.Entry<Class<? extends ItemMeta>, MetaValidator> entry : metaValidators.entrySet()) {
+                Class<? extends ItemMeta> key = entry.getKey();
+                if (key != ItemMeta.class && key.isInstance(meta)) {
+                    metaValidator = entry.getValue();
+                    break;
+                }
+            }
+
+            if (metaValidator == null) {
+                metaValidator = metaValidators.get(ItemMeta.class);
+            }
+
+            if (!metaValidator.isValid(stack, strict)) {
+                return false;
             }
         }
 
@@ -224,10 +245,73 @@ public final class ValidityManager extends Manager {
         }
 
         try {
-            if (!isValid(event.getItemDrop().getItemStack(), new Sender(event.getPlayer()), true)) {
+            Player player = event.getPlayer();
+            Sender sender = new Sender(player);
+
+            if (!isValid(event.getItemDrop().getItemStack(), sender, true)) {
+                if (player.getGameMode() == GameMode.CREATIVE) {
+                    performShakedown(sender);
+                }
+
                 deny(event);
                 event.getItemDrop().remove();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onPlayerPickupItem(PlayerPickupItemEvent event) {
+        if (!isEnabled()) {
+            return;
+        }
+
+        try {
+            Player player = event.getPlayer();
+            Sender sender = new Sender(player);
+
+            if (!isValid(event.getItem().getItemStack(), sender, true)) {
+                if (player.getGameMode() == GameMode.CREATIVE) {
+                    performShakedown(sender);
+                }
+
+                deny(event);
+                event.getItem().remove();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onPlayerItemHeld(PlayerItemHeldEvent event) {
+        if (!isEnabled()) {
+            return;
+        }
+
+        try {
+            Player player = event.getPlayer();
+            Sender sender = new Sender(player);
+            int[] slots = { event.getNewSlot(), event.getPreviousSlot() };
+            PlayerInventory inventory = player.getInventory();
+
+            boolean shakedown = false;
+
+            for (int slot : slots) {
+                ItemStack stack = inventory.getItem(slot);
+
+                if (!isValid(stack, sender, true)) {
+                    shakedown = true;
+                    stack.setType(Material.AIR);
+                    inventory.clear(slot);
+                }
+            }
+
+            if (shakedown && player.getGameMode() == GameMode.CREATIVE) {
+                performShakedown(sender);
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }

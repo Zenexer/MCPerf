@@ -268,7 +268,8 @@ public abstract class Validator {
                 return true;
         }
 
-        if (durability <= getMaxDurability(material)) {
+        short max = getMaxDurability(material);
+        if (max < 0 || durability <= max) {
             return true;
         }
 
@@ -281,8 +282,272 @@ public abstract class Validator {
         }
 
         switch (material) {
+            case WOOD:
+                return 5;
+
+            case STONE:
+                return 6;
+
+            case DIRT:
+                return 2;
+
+            case SAPLING:
+                return 15;
+
+            case WATER:
+            case STATIONARY_WATER:
+            case LAVA:
+            case STATIONARY_LAVA:
+                return 15;
+
+            case SAND:
+                return 1;
+
+            case LOG:
+            case LOG_2:
+                return 15;
+
+            case LEAVES:
+                return 15;
+
+            case LEAVES_2:
+                return 13;
+
+            case WOOL:
+            case STAINED_CLAY:
+            case STAINED_GLASS:
+            case STAINED_GLASS_PANE:
+            case CARPET:
+                return 15;
+
+            case TORCH:
+            case REDSTONE_TORCH_OFF:
+            case REDSTONE_TORCH_ON:
+                return 5;
+
+            case STEP:
+            case DOUBLE_STEP:
+                return 15;
+
+            case STONE_SLAB2:
+            case DOUBLE_STONE_SLAB2:
+                return 3;
+
+            case WOOD_STEP:
+            case WOOD_DOUBLE_STEP:
+                return 13;
+
+            case FIRE:
+                return 15;
+
+            case SANDSTONE:
+            case RED_SANDSTONE:
+                return 2;
+
+            case BED_BLOCK:
+                return 15;
+
+            case GRASS:
+                return 2;
+
+            case RED_ROSE:
+                return 8;
+
+            case YELLOW_FLOWER:
+                return 15;
+
+            case PISTON_BASE:
+            case PISTON_EXTENSION:
+            case PISTON_STICKY_BASE:
+            case PISTON_MOVING_PIECE:
+                return 5;
+
+            case ACACIA_STAIRS:
+            case BIRCH_WOOD_STAIRS:
+            case BRICK_STAIRS:
+            case COBBLESTONE_STAIRS:
+            case DARK_OAK_STAIRS:
+            case JUNGLE_WOOD_STAIRS:
+            case NETHER_BRICK_STAIRS:
+            case QUARTZ_STAIRS:
+            case RED_SANDSTONE_STAIRS:
+            case SANDSTONE_STAIRS:
+            case SMOOTH_STAIRS:
+            case SPRUCE_WOOD_STAIRS:
+            case WOOD_STAIRS:
+                return 7;
+
+            case REDSTONE_WIRE:
+                return 15;
+
+            case DAYLIGHT_DETECTOR:
+            case DAYLIGHT_DETECTOR_INVERTED:
+                return 15;
+
+            case CROPS:
+            case CARROT:
+            case POTATO:
+                return 7;
+
+            //case BEETROOT:
+            //    return 3;
+
+            case SOIL:
+                return 7;
+
+            case STANDING_BANNER:
+                return 15;
+
+            case WALL_BANNER:
+                return 7;
+
+            case ACACIA_DOOR:
+            case BIRCH_DOOR:
+            case DARK_OAK_DOOR:
+            case IRON_DOOR:
+            case JUNGLE_DOOR:
+            case SPRUCE_DOOR:
+            case WOOD_DOOR:
+            case WOODEN_DOOR:
+                return 15;
+
+            case RAILS:
+                return 9;
+
+            case ACTIVATOR_RAIL:
+            case DETECTOR_RAIL:
+            case POWERED_RAIL:
+                return 15;
+
+            case LADDER:
+            case FURNACE:
+            case BURNING_FURNACE:
+            case CHEST:
+            case TRAPPED_CHEST:
+                return 7;
+
+            case SIGN_POST:
+                return 15;
+
+            case WALL_SIGN:
+                return 7;
+
+            case DISPENSER:
+            case DROPPER:
+                return 15;
+
+            case HOPPER:
+                return 15;
+
+            case LEVER:
+                return 15;
+
+            case GOLD_PLATE:
+            case IRON_PLATE:
+            case STONE_PLATE:
+            case WOOD_PLATE:
+                return 1;
+
+            case STONE_BUTTON:
+            case WOOD_BUTTON:
+                return 15;
+
+            case SNOW_BLOCK:
+                return 7;
+
+            case CACTUS:
+            case SUGAR_CANE_BLOCK:
+                return 15;
+
+            case JUKEBOX:
+                return 1;
+
+            case JACK_O_LANTERN:
+            case PUMPKIN:
+                return 7;
+
+            case CAKE_BLOCK:
+                return 6;
+
+            case DIODE_BLOCK_OFF:
+            case DIODE_BLOCK_ON:
+                return 15;
+
+            case REDSTONE_COMPARATOR_OFF:
+            case REDSTONE_COMPARATOR_ON:
+                return 15;
+
+            case TRAP_DOOR:
+            case IRON_TRAPDOOR:
+                return 15;
+
+            case MONSTER_EGGS:
+                return 5;
+
+            case SMOOTH_BRICK:
+                return 3;
+
+            case PRISMARINE:
+                return 2;
+
+            case SPONGE:
+                return 1;
+
+            case BROWN_MUSHROOM:
+            case HUGE_MUSHROOM_1:
+            case HUGE_MUSHROOM_2:
+            case RED_MUSHROOM:
+                return 15;
+
+            case MELON_STEM:
+            case PUMPKIN_STEM:
+                return 7;
+
+            case VINE:
+                return 15;
+
+            case ACACIA_FENCE_GATE:
+            case BIRCH_FENCE_GATE:
+            case DARK_OAK_FENCE_GATE:
+            case FENCE_GATE:
+            case JUNGLE_FENCE_GATE:
+            case SPRUCE_FENCE_GATE:
+                return 7;
+
+            case NETHER_WARTS:
+                return 3;
+
+            case BREWING_STAND:
+                return 3;
+
+            case ENDER_PORTAL_FRAME:
+                return 3;
+
+            case CAULDRON:
+                return 3;
+
+            case COCOA:
+                return 15;
+
+            case TRIPWIRE_HOOK:
+                return 15;
+
+            case COBBLE_WALL:
+                return 1;
+
+            case SKULL:
+                return 5;
+
+            case FLOWER_POT:
+                return 13;
+
+            case QUARTZ_BLOCK:
+                return 4;
+
+            ///// Items /////
+
             case SKULL_ITEM:
-                return (short) Math.max(material.getMaxDurability(), 4);
+                return (short) Math.max(material.getMaxDurability(), 5);
 
             case FLOWER_POT_ITEM:
                 return 13;
@@ -292,8 +557,32 @@ public abstract class Validator {
 
             case BREWING_STAND_ITEM:
                 return 7;
-        }
 
-        return material.getMaxDurability();
+            case INK_SACK:
+                return 15;
+
+            case COAL:
+                return 1;
+
+            case COOKED_FISH:
+            case RAW_FISH:
+                return 3;
+
+            case ANVIL:
+                return 11;  // 2 for item, 11 for block; same material
+
+            case POTION:
+                return 0x7FFF;
+
+            case MONSTER_EGG:
+                return 120;
+
+            case GOLDEN_APPLE:
+                return 1;
+
+            default:
+                //return material.getMaxDurability();
+                return -1;
+        }
     }
 }
