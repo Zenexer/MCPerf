@@ -13,6 +13,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,13 +40,33 @@ public final class EntityManager extends Manager {
     @Getter
     @Setter
     private int worldCreatureLimit = 2000;
+    @Getter
+    private long projectileCleanupInterval = 30 * 20;
+    private BukkitTask projectileCleanupTask;
 
     private final AtomicBoolean cleanupRunning = new AtomicBoolean(false);
 
     public EntityManager(Server server, Logger logger, MCPerfPlugin plugin) {
         super(server, logger, plugin);
+    }
 
-        getServer().getScheduler().runTaskTimer(getPlugin(), this::cleanupProjectiles, 20 * 30, 20 * 30);
+    private void resetProjectileCleanupTask() {
+        if (projectileCleanupTask != null) {
+            projectileCleanupTask.cancel();
+            projectileCleanupTask = null;
+        }
+
+        if (projectileCleanupInterval > 0) {
+            getLogger().log(Level.INFO, String.format("Projectile cleanup running every %d ticks.", projectileCleanupInterval));
+            projectileCleanupTask = getServer().getScheduler().runTaskTimer(getPlugin(), this::cleanupProjectiles, projectileCleanupInterval, projectileCleanupInterval);
+        } else {
+            getLogger().log(Level.INFO, "Projectile cleanup disabled.");
+        }
+    }
+
+    public void setProjectileCleanupInterval(long value) {
+        projectileCleanupInterval = value;
+        resetProjectileCleanupTask();
     }
 
     private static boolean isIgnoredEntityType(EntityType entityType) {
@@ -216,7 +237,7 @@ public final class EntityManager extends Manager {
                                 // This happens occasionally, for some weird reason.
                                 continue;
                             }
-                            getLogger().log(Level.WARNING, "[MCPerf] Unknown entity type: " + entity.getClass().getCanonicalName());
+                            getLogger().log(Level.WARNING, "Unknown entity type: " + entity.getClass().getCanonicalName());
 
                             if (entity instanceof Projectile) {
                                 maxAge = 20 * 20;

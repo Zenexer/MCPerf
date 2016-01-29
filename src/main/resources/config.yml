@@ -5,6 +5,7 @@ entityManager:
   nearbyCreatureLimit: 200
   worldItemLimit: 3000
   worldCreatureLimit: 2000
+  projectileCleanupInterval: 600  # Ticks
 validityManager:
   enabled: false
   maxLoreLines: 5
@@ -25,6 +26,13 @@ validityManager:
   splashPotionCheckingEnabled: false
   splashPotionsBanned: false
   zeroQuantityBanned: false
+  bannedAttributeModifiers:
+    - generic.maxHealth
+    - generic.movementSpeed
+    - generic.attackDamage
+    - horse.jumpStrength
+  bannedTags:
+    - www.wurst-client.tk
 screeningManager:
   enabled: false
   gracePeriod: 20  # Seconds

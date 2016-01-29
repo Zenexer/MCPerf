@@ -8,8 +8,8 @@ import java.util.UUID;
 @Data
 public final class AttributeModifier {
     private final UUID uuid;
-    private final String identifier;
-    private final String name;
+    private final String attributeName;
+    private final String modifierName;
     private final double value;
     private final Operation operation;
 
@@ -23,7 +23,7 @@ public final class AttributeModifier {
 
     @Override
     public String toString() {
-        return String.format("%s %s", identifier, getAmountText());
+        return String.format("%s:%s %s", attributeName, modifierName, getAmountText());
     }
 
     public enum Operation {

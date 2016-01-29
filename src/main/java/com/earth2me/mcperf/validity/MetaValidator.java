@@ -14,6 +14,7 @@ import java.util.logging.Level;
 public abstract class MetaValidator<T extends ItemMeta> extends Validator {
     private static final int ENCHANT_THRESHOLD = 10;
 
+    @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private static String versionKey;                      // Example: ".v1_8_R3"  Note the dot prefix.
     private static Class<?> craftMetaItemClass;            // org.bukkit.craftbukkit{versionKey}.inventory.CraftMetaItem
     private static Field unhandledTagsField;               // CraftMetaItem#unhandledTags : Map<String, NBTBase>
@@ -125,20 +126,44 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator {
 
         if (unhandledTags != null && !unhandledTags.isEmpty()) {
             Set<String> suspiciousTags = new HashSet<>();
+            Set<String> bannedAttributeModifiers = getConfig().getBannedAttributeModifiers();
+            Set<String> bannedTags = getConfig().getBannedTags();
 
             for (Map.Entry<String, Object> entry : unhandledTags.entrySet()) {
                 String key = entry.getKey();
-                //Object value = entry.getValue();
+
+                if (bannedTags.contains(key)) {
+                    onInvalid("banned tag: %s", key);
+                    return false;
+                }
 
                 switch (key) {
                     case "id":
                     case "Count":
                     case "Damage":
+                    case "Unbreakable":
+                    case "CanDestroy":
+                    case "CanPlaceOn":
+                    case "BlockEntityTag":
+                    case "ench":
+                    case "StoredEnchantments":
+                    case "RepairCost":
+                    case "display":
+                    case "HideFlags":
+                    case "resolved":
+                    case "generation":
+                    case "author":
+                    case "title":
+                    case "pages":
+                    case "SkullOwner":
+                    case "ExtraType":  // pre-1.8
+                    case "Owner":
+                    case "Explosion":
+                    case "Fireworks":
+                    case "EntityTag":
+                    case "map_is_scaling":
+                    case "Decorations":
                         continue;
-
-                    case "www.wurst-client.tk":
-                        onInvalid("hack client (Wurst)");
-                        return false;
 
                     case "AttributeModifiers":
                         try {
@@ -148,29 +173,25 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator {
                             }
 
                             for (AttributeModifier modifier : modifiers.values()) {
-                                switch (modifier.getIdentifier()) {
+                                if (bannedAttributeModifiers.contains(modifier.getAttributeName())) {
+                                    String text = String.join(", ", modifiers.values().stream().map(m -> (CharSequence) m.toString()).toArray(String[]::new));
+                                    onInvalid("attribute modifiers: %s", text);
+                                    return false;
+                                }
+
+                                switch (modifier.getAttributeName()) {
                                     case "zombie.spawnReinforcements":
                                     case "generic.followRange":
                                     case "generic.knockbackResistance":
-                                        continue;
-                                }
-
-                                String text = String.join(", ", modifiers.values().stream().map(m -> (CharSequence) m.toString())::iterator);
-
-                                switch (modifier.getIdentifier()) {
                                     case "generic.maxHealth":
                                     case "generic.movementSpeed":
                                     case "generic.attackDamage":
                                     case "horse.jumpStrength":
-                                        onInvalid("attribute modifiers: %s", text);
-                                        return false;
-
-                                    default:
+                                        String text = String.join(", ", modifiers.values().stream().map(m -> (CharSequence) m.toString()).toArray(String[]::new));
                                         log(Level.INFO, String.format("[MCPerf] Detected %s with modifier(s): %s", stack.getType().name(), text));
                                         break;
                                 }
                             }
-
                         } catch (Exception e) {
                             log(Level.WARNING, e);
                         }
@@ -283,14 +304,14 @@ public abstract class MetaValidator<T extends ItemMeta> extends Validator {
                 long uuidHigh = (long) nbtTagCompoundGetLongMethod.invoke(attributeModifier, "UUIDMost");
                 long uuidLow = (long) nbtTagCompoundGetLongMethod.invoke(attributeModifier, "UUIDLeast");
                 UUID uuid = new UUID(uuidHigh, uuidLow);
-                String id = (String) nbtTagCompoundGetStringMethod.invoke(attributeModifier, "AttributeName");
-                String name = (String) nbtTagCompoundGetStringMethod.invoke(attributeModifier, "Name");
+                String attributeName = (String) nbtTagCompoundGetStringMethod.invoke(attributeModifier, "AttributeName");
+                String modifierName = (String) nbtTagCompoundGetStringMethod.invoke(attributeModifier, "Name");
                 double value = (double) nbtTagCompoundGetDoubleMethod.invoke(attributeModifier, "Amount");
                 int type = (int) nbtTagCompoundGetIntMethod.invoke(attributeModifier, "Operation");
                 AttributeModifier.Operation operation = AttributeModifier.Operation.fromId(type);
 
-                AttributeModifier modifier = new AttributeModifier(uuid, id, name, value, operation);
-                result.put(modifier.getIdentifier(), modifier);
+                AttributeModifier modifier = new AttributeModifier(uuid, attributeName, modifierName, value, operation);
+                result.put(modifier.getAttributeName(), modifier);
             }
 
             return result;

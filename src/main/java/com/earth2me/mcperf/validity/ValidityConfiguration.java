@@ -3,6 +3,8 @@ package com.earth2me.mcperf.validity;
 import lombok.Value;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.util.*;
+
 @Value
 public class ValidityConfiguration {
     boolean enabled;
@@ -24,6 +26,8 @@ public class ValidityConfiguration {
     boolean splashPotionCheckingEnabled;
     boolean splashPotionsBanned;
     boolean zeroQuantityBanned;
+    Set<String> bannedAttributeModifiers;
+    Set<String> bannedTags;
 
     public ValidityConfiguration(FileConfiguration config) {
         enabled = config.getBoolean("validityManager.enabled", false);
@@ -45,5 +49,34 @@ public class ValidityConfiguration {
         splashPotionCheckingEnabled = config.getBoolean("validityManager.splashPotionCheckingEnabled", false);
         splashPotionsBanned = config.getBoolean("validityManager.splashPotionsBanned", false);
         zeroQuantityBanned = config.getBoolean("validityManager.zeroQuantityBanned", false);
+
+        if (config.contains("validityManager.bannedAttributeModifiers")) {
+            List<String> list = config.getStringList("validityManager.bannedAttributeModifiers");
+            if (list == null) {
+                bannedAttributeModifiers = Collections.emptySet();
+            } else {
+                bannedAttributeModifiers = new HashSet<>(list);
+            }
+        } else {
+            bannedAttributeModifiers = new HashSet<>(Arrays.asList(
+                    "generic.maxHealth",
+                    "generic.movementSpeed",
+                    "generic.attackDamage",
+                    "horse.jumpStrength"
+            ));
+        }
+
+        if (config.contains("validityManager.bannedTags")) {
+            List<String> list = config.getStringList("validityManager.bannedTags");
+            if (list == null) {
+                bannedTags = Collections.emptySet();
+            } else {
+                bannedTags = new HashSet<>(list);
+            }
+        } else {
+            bannedTags = new HashSet<>(Collections.singletonList(
+                    "www.wurst-client.tk"
+            ));
+        }
     }
 }

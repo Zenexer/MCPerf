@@ -52,6 +52,7 @@ public class MCPerfPlugin extends JavaPlugin {
         entityManager.setNearbyItemLimit(config.getInt("entityManager.nearbyItemLimit", entityManager.getNearbyItemLimit()));
         entityManager.setWorldCreatureLimit(config.getInt("entityManager.worldCreatureLimit", entityManager.getWorldCreatureLimit()));
         entityManager.setWorldItemLimit(config.getInt("entityManager.worldItemLimit", entityManager.getWorldItemLimit()));
+        entityManager.setProjectileCleanupInterval(config.getLong("entityManager.projectileCleanupInterval", entityManager.getProjectileCleanupInterval()));
 
         validityManager.setConfig(new ValidityConfiguration(config));
 
