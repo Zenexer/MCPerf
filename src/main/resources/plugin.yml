@@ -7,6 +7,11 @@ main: com.earth2me.mcperf.MCPerfPlugin
 loadbefore:
   # We need to load before all other plugins, if at all possible.  This ensures that we intercept commands and chat
   # before everything else.
+  - DeluxeChat
+  - DeluxeTags
+  - MooPermissions
+  - MooPerms
+  - GroupManager
   - Vault
   - Essentials
   - MilkyKore
