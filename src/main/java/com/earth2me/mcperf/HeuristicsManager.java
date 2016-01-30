@@ -1,3 +1,82 @@
+/*
+ * WARNING: THIS FILE IS EXTREMELY SENSITIVE
+ * =========================================
+ *
+ * UNLESS YOU HAVE BEEN GRANTED EXPLICIT WRITTEN PERMISSION TO READ THIS
+ * SPECIFIC FILE, YOU DO NOT HAVE PERMISSION TO DO SO.  IT CONTAINS
+ * HIGHLY CONFIDENTIAL TRADE SECRETS.
+ *
+ * THE LIST OF PEOPLE CURRENTLY AUTHORIZED TO VIEW THIS FILE:
+ *
+ *   * Paul Buonopane
+ *
+ * IF YOU ARE NOT IN THE ABOVE LIST, PLEASE CLOSE THIS FILE.  DOING
+ * OTHERWISE IS A BREACH OF LICENSE.
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ * 
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ */
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
