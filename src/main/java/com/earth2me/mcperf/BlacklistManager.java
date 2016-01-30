@@ -1,6 +1,7 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.config.ConfigSettingSetter;
 import lombok.Getter;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
@@ -29,6 +30,7 @@ public class BlacklistManager extends Manager {
         super(server, logger, plugin, false);
     }
 
+    @ConfigSettingSetter
     public void setBlocks(Set<Integer> value) {
         if (value == null) {
             return;

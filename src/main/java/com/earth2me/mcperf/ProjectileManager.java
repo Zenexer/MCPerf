@@ -1,6 +1,7 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.config.ConfigSettingSetter;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Server;
@@ -33,6 +34,7 @@ public class ProjectileManager extends Manager {
         super(server, logger, plugin);
     }
 
+    @ConfigSettingSetter
     public void setProjectileCleanupInterval(long value) {
         projectileCleanupInterval = value;
         resetProjectileCleanupTask();
@@ -170,9 +172,11 @@ public class ProjectileManager extends Manager {
                         case UNKNOWN:
                         default:
                             if (entity instanceof Creature && "CraftCreature".equals(entity.getClass().getSimpleName())) {
-                                // This happens occasionally, for some weird reason.
+                                // This happens occasionally, for some weird reason.  What sort of creature is it?
+                                // We'll never know.  A placeholder?
                                 continue;
                             }
+
                             getLogger().log(Level.WARNING, "Unknown entity type: " + entity.getClass().getCanonicalName());
 
                             if (entity instanceof Projectile) {

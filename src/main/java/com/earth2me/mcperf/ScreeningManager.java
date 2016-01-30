@@ -61,7 +61,7 @@ public final class ScreeningManager extends Manager {
                 info.values().forEach(Info::clear);
             } catch (ConcurrentModificationException e) {
                 // Yeah... that happened.  Edge case, one or two people get kicked.
-                getLogger().log(Level.WARNING, "[MCPerf] Couldn't clear all kill tasks due to concurrency issue: " + e.getMessage(), e);
+                getLogger().log(Level.WARNING, "Couldn't clear all kill tasks due to concurrency issue: " + e.getMessage(), e);
             }
             // Don't clear it in case users respond to tests; we want to block those messages.
         }
@@ -170,7 +170,7 @@ public final class ScreeningManager extends Manager {
 
             screen(player, null);
         } catch (Exception e) {
-            getLogger().log(Level.SEVERE, "[MCPerf] Screening exception on player join: " + e.getMessage(), e);
+            getLogger().log(Level.SEVERE, "Screening exception on player join: " + e.getMessage(), e);
         }
     }
 
@@ -203,7 +203,7 @@ public final class ScreeningManager extends Manager {
                 screen(player, null);
             }
         } catch (Exception e) {
-            getLogger().log(Level.SEVERE, "[MCPerf] Exception while processing player chat event for screening: " + e.getMessage(), e);
+            getLogger().log(Level.SEVERE, "Exception while processing player chat event for screening: " + e.getMessage(), e);
         }
     }
 
@@ -220,7 +220,7 @@ public final class ScreeningManager extends Manager {
             return true;
         }
 
-        boolean hasAllPermissions = sender.isOp() || sender.hasPermission("mcperf.screen.*");
+        boolean hasAllPermissions = sender.isOp() || sender.hasPermission("mcperf.*") || sender.hasPermission("mcperf.screen.*");
 
         if (!hasAllPermissions && !sender.hasPermission("mcperf.screen")) {
             return Util.denyPermission(sender);
@@ -471,7 +471,7 @@ public final class ScreeningManager extends Manager {
                 try {
                     getServer().getScheduler().cancelTask(killTask);
                 } catch (Exception e) {
-                    getLogger().log(Level.WARNING, "[MCPerf] Exception while canceling kill task: " + e.getMessage(), e);
+                    getLogger().log(Level.WARNING, "Exception while canceling kill task: " + e.getMessage(), e);
                 }
             }
 

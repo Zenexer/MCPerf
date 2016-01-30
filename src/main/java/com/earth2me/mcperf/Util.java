@@ -6,7 +6,6 @@ import org.bukkit.command.CommandSender;
 
 import java.util.stream.Stream;
 
-
 public class Util {
     private static final String ALERT_PREFIX = ChatColor.RED + "/!\\ MCPerf /!\\ " + ChatColor.LIGHT_PURPLE;
 
@@ -14,6 +13,7 @@ public class Util {
         throw new UnsupportedOperationException("Static class");
     }
 
+    // TODO: This doesn't seem to be used consistently.
     public static boolean denyPermission(CommandSender sender) {
         sender.sendMessage(ChatColor.RED + "Permission denied.");
         return true;

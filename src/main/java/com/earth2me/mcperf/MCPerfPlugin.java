@@ -33,6 +33,7 @@ public class MCPerfPlugin extends JavaPlugin {
     @Getter
     private BlacklistManager blacklistManager;
 
+    // Thought: Should this be a set?  Would lose ordering.  Linked list?
     private final List<Manager> managers = new ArrayList<>();
     private final Set<Manager> registered = new HashSet<>();
 
@@ -118,6 +119,7 @@ public class MCPerfPlugin extends JavaPlugin {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        // If this gets any more complex, it needs to be replaced with a proper command system.
         switch (command.getName().toLowerCase()) {
             case "mcperf":
                 switch (args.length > 0 ? args[0].toLowerCase() : "help") {
@@ -127,7 +129,7 @@ public class MCPerfPlugin extends JavaPlugin {
 
                     case "reload":
                         if (!sender.isOp() && !sender.hasPermission("mcperf.reload") && !sender.hasPermission("mcperf.*")) {
-                            return false;
+                            return Util.denyPermission(sender);
                         }
 
                         reload();

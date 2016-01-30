@@ -33,6 +33,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public final class ValidityManager extends Manager {
+    // TODO: Migrate this to new configuration system
     @Getter
     private ValidityConfiguration config;
 
