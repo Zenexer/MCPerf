@@ -39,6 +39,19 @@ public class MCPerfPlugin extends JavaPlugin {
 
     private FileConfiguration ensureConfig() {
         try {
+            saveResource("LICENSE.md", true);
+
+            File license = new File(getDataFolder(), "LICENSE.md");
+            if (!license.exists()) {
+                throw new RuntimeException("Couldn't verify existence of file: " + license.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Unable to save LICENSE.md; disabling", e);
+            getPluginLoader().disablePlugin(this);
+            throw e;
+        }
+
+        try {
             if (!new File("config.yml").exists()) {
                 saveDefaultConfig();
                 reloadConfig();
