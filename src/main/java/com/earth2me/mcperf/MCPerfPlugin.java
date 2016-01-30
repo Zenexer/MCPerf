@@ -57,6 +57,8 @@ public class MCPerfPlugin extends JavaPlugin {
         for (Manager manager : managers) {
             config.apply(yaml, manager);
         }
+
+        // TODO: Migrate this to new configuration system
         validityManager.setConfig(new ValidityConfiguration(yaml));
 
         managers.stream()
@@ -66,32 +68,6 @@ public class MCPerfPlugin extends JavaPlugin {
                     pluginManager.registerEvents(m, this);
                     registered.add(m);
                 });
-
-        /*
-        entityManager.setEnabled(yaml.getBoolean("entityManager.enabled", entityManager.isEnabled()));
-        entityManager.setChunkLoadScanningEnabled(yaml.getBoolean("entityManager.enabled", entityManager.isChunkLoadScanningEnabled()));
-        entityManager.setNearbyChunkRadius(yaml.getInt("entityManager.nearbyChunkRadius", entityManager.getNearbyChunkRadius()));
-        entityManager.setNearbyCreatureLimit(yaml.getInt("entityManager.nearbyCreatureLimit", entityManager.getNearbyCreatureLimit()));
-        entityManager.setNearbyItemLimit(yaml.getInt("entityManager.nearbyItemLimit", entityManager.getNearbyItemLimit()));
-        entityManager.setWorldCreatureLimit(yaml.getInt("entityManager.worldCreatureLimit", entityManager.getWorldCreatureLimit()));
-        entityManager.setWorldItemLimit(yaml.getInt("entityManager.worldItemLimit", entityManager.getWorldItemLimit()));
-
-        projectileManager.setEnabled(yaml.getBoolean("projectileManager.enabled", projectileManager.isEnabled()));
-        projectileManager.setChunkLoadCleanupEnabled(yaml.getBoolean("projectileManager.chunkLoadCleanupEnabled", projectileManager.isEnabled()));
-        projectileManager.setProjectileCleanupInterval(yaml.getLong("projectileManager.projectileCleanupInterval", projectileManager.getProjectileCleanupInterval()));
-
-        validityManager.setConfig(new ValidityConfiguration(yaml));
-
-        screeningManager.setEnabled(yaml.getBoolean("screeningManager.enabled", screeningManager.isEnabled()));
-        screeningManager.setGracePeriod(yaml.getLong("screeningManager.gracePeriod", screeningManager.getGracePeriod()));
-
-        heuristicsManager.setEnabled(yaml.getBoolean("heuristicsManager.enabled", heuristicsManager.isEnabled()));
-        heuristicsManager.setDebugEnabled(yaml.getBoolean("heuristicsManager.debugEnabled", heuristicsManager.isDebugEnabled()));
-        heuristicsManager.setCommands(yaml.contains("heuristicsManager.commands") ? yaml.getStringList("heuristicsManager.commands") : heuristicsManager.getCommands());
-
-        blacklistManager.setEnabled(yaml.getBoolean("blacklistManager.enabled", blacklistManager.isEnabled()));
-        blacklistManager.setBlocks(yaml.contains("blacklistManager.blocks") ? yaml.getIntegerList("blacklistManager.blocks") : null);
-        */
     }
 
     @SuppressWarnings("RedundantArrayCreation")  // Permits trailing comma

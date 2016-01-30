@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.*;
 
+// TODO: Migrate this to new configuration system
 @Value
 public class ValidityConfiguration {
     boolean enabled;
