@@ -1,5 +1,6 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.config.ConfigSetting;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.GameMode;
@@ -49,9 +50,11 @@ public final class HeuristicsManager extends Manager {
     private int blackmarksTimeout = 60;
     @Getter
     @Setter
+    @ConfigSetting
     private List<String> commands = Collections.singletonList("kick %1$s [MCPerf] Cheating: %2$s");
     @Getter
     @Setter
+    @ConfigSetting
     private boolean debugEnabled = false;
 
     private final Random random = new Random();

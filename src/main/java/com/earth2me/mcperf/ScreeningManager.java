@@ -1,5 +1,6 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.config.ConfigSetting;
 import lombok.Getter;
 import lombok.Setter;
 import net.md_5.bungee.api.ChatColor;
@@ -40,6 +41,7 @@ public final class ScreeningManager extends Manager {
 
     @Getter
     @Setter
+    @ConfigSetting
     private long gracePeriod = 20;
 
     public ScreeningManager(Server server, Logger logger, MCPerfPlugin plugin) {

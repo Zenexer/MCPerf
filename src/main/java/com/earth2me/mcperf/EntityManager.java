@@ -1,5 +1,6 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.config.ConfigSetting;
 import com.google.common.collect.Iterables;
 import lombok.Getter;
 import lombok.Setter;
@@ -7,18 +8,17 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
-import org.bukkit.entity.*;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,22 +27,28 @@ import java.util.stream.StreamSupport;
 public final class EntityManager extends Manager {
     @Getter
     @Setter
+    @ConfigSetting
+    private boolean chunkLoadScanningEnabled = false;
+    @Getter
+    @Setter
+    @ConfigSetting
     private int nearbyChunkRadius = 1;
     @Getter
     @Setter
-    private int nearbyItemLimit = 400;
+    @ConfigSetting
+    private int nearbyItemLimit = 250;
     @Getter
     @Setter
-    private int nearbyCreatureLimit = 200;
+    @ConfigSetting
+    private int nearbyCreatureLimit = 400;
     @Getter
     @Setter
-    private int worldItemLimit = 3000;
+    @ConfigSetting
+    private int worldItemLimit = 1000;
     @Getter
     @Setter
+    @ConfigSetting
     private int worldCreatureLimit = 2000;
-    @Getter
-    private long projectileCleanupInterval = 30 * 20;
-    private BukkitTask projectileCleanupTask;
 
     private final AtomicBoolean cleanupRunning = new AtomicBoolean(false);
 
@@ -50,27 +56,8 @@ public final class EntityManager extends Manager {
         super(server, logger, plugin);
     }
 
-    private void resetProjectileCleanupTask() {
-        if (projectileCleanupTask != null) {
-            projectileCleanupTask.cancel();
-            projectileCleanupTask = null;
-        }
-
-        if (projectileCleanupInterval > 0) {
-            getLogger().log(Level.INFO, String.format("Projectile cleanup running every %d ticks.", projectileCleanupInterval));
-            projectileCleanupTask = getServer().getScheduler().runTaskTimer(getPlugin(), this::cleanupProjectiles, projectileCleanupInterval, projectileCleanupInterval);
-        } else {
-            getLogger().log(Level.INFO, "Projectile cleanup disabled.");
-        }
-    }
-
-    public void setProjectileCleanupInterval(long value) {
-        projectileCleanupInterval = value;
-        resetProjectileCleanupTask();
-    }
-
     private static boolean isIgnoredEntityType(EntityType entityType) {
-        // Much faster than testing the contents of a list.
+        // Much faster than testing the contents of a list/set.
         switch (entityType) {
             case PLAYER:
             case ITEM_FRAME:
@@ -109,155 +96,14 @@ public final class EntityManager extends Manager {
         }
     }
 
-	/*@EventHandler(priority = EventPriority.HIGH)
-    public void onChunkLoad(ChunkLoadEvent event)
-	{
-		Chunk chunk = event.getChunk();
-		Location location = new Location(chunk.getWorld(), chunk.getX() << 4, 0, chunk.getZ() << 4);
-
-		// These will start cleanups if they fail.
-		canSpawn(location, getWorldCreatureLimit(), getNearbyCreatureLimit());
-		canSpawn(location, getWorldItemLimit(), getNearbyItemLimit());
-	}*/
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkLoad(ChunkLoadEvent event) {
-        Entity[] entities = event.getChunk().getEntities();
+        Chunk chunk = event.getChunk();
+        Location location = new Location(chunk.getWorld(), chunk.getX() << 4, 0, chunk.getZ() << 4);
 
-        for (Entity entity : entities) {
-            if (entity instanceof Projectile || entity instanceof Firework) {
-                entity.remove();
-                break;
-            }
-        }
-    }
-
-    public void cleanupProjectiles() {
-        List<World> worlds = getServer().getWorlds();
-        final Entity[][] entities = new Entity[worlds.size()][];
-
-        for (int w = 0; w < worlds.size(); w++) {
-            List<Entity> entityList = worlds.get(w).getEntities();
-            entities[w] = entityList.toArray(new Entity[entityList.size()]);
-        }
-
-        getServer().getScheduler().runTaskAsynchronously(getPlugin(), () -> {
-            final List<Entity> removalQueue = new LinkedList<>();
-
-            for (Entity[] we : entities) {
-                for (Entity entity : we) {
-                    int maxAge;
-
-                    switch (entity.getType()) {
-                        case ARMOR_STAND:
-                        case BLAZE:
-                        case BOAT:
-                        case CAVE_SPIDER:
-                        case CHICKEN:
-                        case COMPLEX_PART:
-                        case COW:
-                        case CREEPER:
-                        case ENDER_CRYSTAL:
-                        case ENDER_DRAGON:
-                        case ENDER_SIGNAL:
-                        case ENDERMAN:
-                        case ENDERMITE:
-                        case GIANT:
-                        case GUARDIAN:
-                        case HORSE:
-                        case IRON_GOLEM:
-                        case ITEM_FRAME:
-                        case LEASH_HITCH:
-                        case LIGHTNING:
-                        case MAGMA_CUBE:
-                        case MINECART:
-                        case MINECART_CHEST:
-                        case MINECART_COMMAND:
-                        case MINECART_FURNACE:
-                        case MINECART_HOPPER:
-                        case MINECART_MOB_SPAWNER:
-                        case MINECART_TNT:
-                        case MUSHROOM_COW:
-                        case OCELOT:
-                        case PAINTING:
-                        case PIG:
-                        case PIG_ZOMBIE:
-                        case PLAYER:
-                        case RABBIT:
-                        case SHEEP:
-                        case SILVERFISH:
-                        case SKELETON:
-                        case SLIME:
-                        case SNOWMAN:
-                        case SPIDER:
-                        case SQUID:
-                        case VILLAGER:
-                        case WEATHER:
-                        case WITCH:
-                        case WITHER:
-                        case WOLF:
-                        case ZOMBIE:
-                            continue;
-
-                        case FALLING_BLOCK:
-                        case PRIMED_TNT:
-                            maxAge = 30 * 20;
-                            break;
-
-                        case FIREWORK:
-                            maxAge = 45 * 20;
-                            break;
-
-                        case GHAST:
-                        case BAT:
-                            maxAge = 10 * 60 * 20;
-                            break;
-
-                        case DROPPED_ITEM:
-                        case EXPERIENCE_ORB:
-                            maxAge = 8 * 60 * 20;
-                            break;
-
-                        case ARROW:
-                        case EGG:
-                        case ENDER_PEARL:
-                        case FIREBALL:
-                        case FISHING_HOOK:
-                        case SMALL_FIREBALL:
-                        case SNOWBALL:
-                        case SPLASH_POTION:
-                        case THROWN_EXP_BOTTLE:
-                        case WITHER_SKULL:
-                            maxAge = 20 * 20;
-                            break;
-
-                        case UNKNOWN:
-                        default:
-                            if (entity instanceof Creature && "CraftCreature".equals(entity.getClass().getSimpleName())) {
-                                // This happens occasionally, for some weird reason.
-                                continue;
-                            }
-                            getLogger().log(Level.WARNING, "Unknown entity type: " + entity.getClass().getCanonicalName());
-
-                            if (entity instanceof Projectile) {
-                                maxAge = 20 * 20;
-                            } else {
-                                continue;
-                            }
-                            break;
-                    }
-
-                    if (entity.getTicksLived() > maxAge) {
-                        removalQueue.add(entity);
-                    }
-                }
-            }
-
-            getServer().getScheduler().callSyncMethod(getPlugin(), () -> {
-                removalQueue.forEach(Entity::remove);
-                return null;
-            });
-        });
+        // These will start cleanups if they fail.
+        canSpawn(location, getWorldCreatureLimit(), getNearbyCreatureLimit());
+        canSpawn(location, getWorldItemLimit(), getNearbyItemLimit());
     }
 
     private void cleanupWorld(Location location, int limit) {
@@ -335,9 +181,9 @@ public final class EntityManager extends Manager {
                 problemTypes.remove(EntityType.PLAYER);
 
                 // Evaluate immediately
-                final List<Entity> toRemove = Arrays.asList(filteredEntityStream(entities)
+                final List<Entity> toRemove = new ArrayList<>(Arrays.asList(filteredEntityStream(entities)
                         .filter(entity -> problemTypes.contains(entity.getType()))
-                        .toArray(Entity[]::new));
+                        .toArray(Entity[]::new)));
 
                 if (toRemove.size() >= 10) {
                     for (int i = 0; i < 5; i++) {

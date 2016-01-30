@@ -1,5 +1,7 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.config.Configurable;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Server;
@@ -7,9 +9,10 @@ import org.bukkit.event.Listener;
 
 import java.util.logging.Logger;
 
-public abstract class Manager implements Listener {
+public abstract class Manager implements Listener, Configurable {
     @Getter
     @Setter
+    @ConfigSetting
     private boolean enabled;
     @Getter
     private final Logger logger;
@@ -19,6 +22,7 @@ public abstract class Manager implements Listener {
     private final MCPerfPlugin plugin;
     @Getter
     private final PluginCommandSender commandSender;
+    private String configPathCache;
 
     public Manager(Server server, Logger logger, MCPerfPlugin plugin) {
         this(server, logger, plugin, true);
@@ -54,5 +58,20 @@ public abstract class Manager implements Listener {
 
     protected void sendAlert(String message) {
         Util.sendAlert(getServer(), message);
+    }
+
+    @Override
+    public String getConfigPath() {
+        if (configPathCache == null) {
+            String name = getClass().getSimpleName();
+            if (name.length() > 1) {
+                configPathCache = Character.toLowerCase(name.charAt(0)) + name.substring(1);
+            } else {
+                assert !name.isEmpty();
+                configPathCache = name.toLowerCase();
+            }
+        }
+
+        return configPathCache;
     }
 }

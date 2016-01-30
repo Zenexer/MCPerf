@@ -1,5 +1,7 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.config.ConfigSetting;
+import lombok.Getter;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.Server;
@@ -11,22 +13,28 @@ import org.bukkit.event.world.ChunkLoadEvent;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class BlacklistManager extends Manager {
     private static final int MAX_BLOCK_ID = 255;
 
-    private boolean[] blocks = new boolean[MAX_BLOCK_ID];
+    @Getter
+    @ConfigSetting
+    private Set<Integer> blocks;
+    private boolean[] optimizedBlocks = new boolean[MAX_BLOCK_ID];
 
     public BlacklistManager(Server server, Logger logger, MCPerfPlugin plugin) {
         super(server, logger, plugin, false);
     }
 
-    public void setBlocks(List<Integer> value) {
+    public void setBlocks(Set<Integer> value) {
         if (value == null) {
             return;
         }
+
+        this.blocks = value;
 
         boolean[] blocks = new boolean[MAX_BLOCK_ID];
         for (int id : value) {
@@ -36,21 +44,26 @@ public class BlacklistManager extends Manager {
             blocks[id] = true;
         }
 
-        this.blocks = blocks;
+        this.optimizedBlocks = blocks;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
-        Block block = event.getBlockPlaced();
-        // Important for performance
-        @SuppressWarnings("deprecation") int id = block.getTypeId();
-
-        if (id <= 0 || id >= MAX_BLOCK_ID) {
-            getLogger().log(Level.SEVERE, "[MCPerf] Found block ID " + id + ", which is less than 0 or greater than " + MAX_BLOCK_ID);
+        if (!isEnabled()) {
             return;
         }
 
-        if (blocks[id]) {
+        Block block = event.getBlockPlaced();
+        // Important for performance
+        @SuppressWarnings("deprecation")
+        int id = block.getTypeId();
+
+        if (id <= 0 || id >= MAX_BLOCK_ID) {
+            getLogger().log(Level.SEVERE, "Found block ID " + id + ", which is less than 0 or greater than " + MAX_BLOCK_ID);
+            return;
+        }
+
+        if (optimizedBlocks[id]) {
             event.setCancelled(true);
             event.setBuild(false);
         }
@@ -58,11 +71,15 @@ public class BlacklistManager extends Manager {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChunkLoad(ChunkLoadEvent event) {
+        if (!isEnabled()) {
+            return;
+        }
+
         scanChunk(event.getChunk());
     }
 
     private void scanChunk(final Chunk chunk) {
-        final boolean[] blocks = this.blocks;
+        final boolean[] blocks = this.optimizedBlocks;
 
         getServer().getScheduler().runTaskAsynchronously(getPlugin(), () -> {
             if (!chunk.isLoaded()) {

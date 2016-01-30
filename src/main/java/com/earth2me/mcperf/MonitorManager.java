@@ -1,6 +1,5 @@
 package com.earth2me.mcperf;
 
-import com.google.common.base.Joiner;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
@@ -11,7 +10,6 @@ import org.bukkit.event.player.PlayerChatEvent;
 
 import java.util.Set;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 
 public final class MonitorManager extends Manager {
     private static final int MAX_DISPLAY_RECIPIENTS = 30;
@@ -22,6 +20,10 @@ public final class MonitorManager extends Manager {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerChat(@SuppressWarnings("deprecation") PlayerChatEvent event) {
+        if (!isEnabled()) {
+            return;
+        }
+
         String world = event.getPlayer().getWorld().getName();
         String sender = event.getPlayer().getName();
         String displayName = event.getPlayer().getDisplayName();
