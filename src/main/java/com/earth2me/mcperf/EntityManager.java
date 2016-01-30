@@ -102,8 +102,8 @@ public final class EntityManager extends Manager {
         Location location = new Location(chunk.getWorld(), chunk.getX() << 4, 0, chunk.getZ() << 4);
 
         // These will start cleanups if they fail.
-        canSpawn(location, getWorldCreatureLimit(), getNearbyCreatureLimit());
-        canSpawn(location, getWorldItemLimit(), getNearbyItemLimit());
+        canSpawn(location, getNearbyCreatureLimit(), getWorldCreatureLimit());
+        canSpawn(location, getNearbyItemLimit(), getWorldItemLimit());
     }
 
     private void cleanupWorld(Location location, int limit) {
@@ -111,8 +111,12 @@ public final class EntityManager extends Manager {
 
         World world = location.getWorld();
         int count = entities.size();
-        getLogger().warning(String.format("Too many entities (%d) in world [%s]; running cleanup", count, world.getName()));
+        if (count < limit) {
+            getLogger().warning(String.format("Discrepancy: calculated that there were too many entities for world [%s], but, upon cleanup, there were only %d (<= %d).", world.getName(), count, limit));
+            return;
+        }
 
+        getLogger().warning(String.format("Too many entities (%d > %d) in world [%s]; running cleanup", count, limit, world.getName()));
         cleanup(entities, limit);
     }
 

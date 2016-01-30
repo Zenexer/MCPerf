@@ -28,7 +28,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class HeuristicsManager extends Manager {
-    private final WeakHashMap<Player, AuraDetector> auraDetectors = new WeakHashMap<>();
+    private final WeakHashMap<Player, Detector> detectors = new WeakHashMap<>();
 
     @Getter
     @Setter
@@ -77,16 +77,16 @@ public final class HeuristicsManager extends Manager {
         server.getOnlinePlayers().forEach(this::auditPlayer);
     }
 
-    private AuraDetector getAuraDetector(Player player) {
+    private Detector getAuraDetector(Player player) {
         return getAuraDetector(player, true);
     }
 
-    private AuraDetector getAuraDetector(Player player, boolean createIfMissing) {
-        AuraDetector i = auraDetectors.get(player);
-        if (i == null && createIfMissing) {
-            auraDetectors.put(player, i = new AuraDetector(player));
+    private Detector getAuraDetector(Player player, boolean createIfMissing) {
+        Detector detector = detectors.get(player);
+        if (detector == null && createIfMissing) {
+            detectors.put(player, detector = new Detector(player));
         }
-        return i;
+        return detector;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -194,7 +194,7 @@ public final class HeuristicsManager extends Manager {
         }
 
         Player player = event.getPlayer();
-        AuraDetector detector = getAuraDetector(player);
+        Detector detector = getAuraDetector(player);
 
         switch (event.getAction()) {
             case LEFT_CLICK_AIR:
@@ -253,7 +253,7 @@ public final class HeuristicsManager extends Manager {
     }
 
     private void onPlayerDepart(Player player) {
-        AuraDetector detector = auraDetectors.remove(player);
+        Detector detector = detectors.remove(player);
         if (detector != null) {
             detector.reset();
             detector.close();
@@ -290,12 +290,12 @@ public final class HeuristicsManager extends Manager {
 
     protected void debug(String message) {
         if (isDebugEnabled()) {
-            getServer().getConsoleSender().sendMessage("[MCPerf:HeuristicsManager] " + message);
+            println("[MCPerf:Heuristics] " + message);
         }
     }
 
 
-    private class AuraDetector {
+    private class Detector {
         private WeakReference<Player> player;
         private Long lastTime = null;
         private int suspiciousHits = 0;
@@ -316,7 +316,7 @@ public final class HeuristicsManager extends Manager {
         private int farHits = 0;
         private int highSpeedAttacks = 0;
 
-        public AuraDetector(Player player) {
+        public Detector(Player player) {
             this.player = new WeakReference<>(player);
         }
 
@@ -439,11 +439,12 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (lastAutosoupCheck != null) {
-                debug("Eating delay: %d", System.currentTimeMillis() - lastAutosoupCheck);
+                long delay = System.currentTimeMillis() - lastAutosoupCheck;
+                debug("Eating delay: %d", delay);
 
-                if (System.currentTimeMillis() - lastAutosoupCheck < 300) {
+                if (delay < 200) {
                     //onCaughtCheating(player, "autosoup");
-                    getLogger().log(Level.INFO, String.format("%s appears to be using autosoup (this test is inaccurate)", player.getName()));
+                    getLogger().log(Level.INFO, String.format("%s appears to be using autosoup (this test is inaccurate) (delay: %d ms)", player.getName(), delay));
                 }
 
                 lastAutosoupCheck = null;
@@ -632,8 +633,12 @@ public final class HeuristicsManager extends Manager {
                 missDistance = null;
             }
 
-            if (distance >= 4.2) {
+            if (distance >= 6) {
                 farHits += 4;
+            } else if (distance >= 5) {
+                farHits += 2;
+            } if (distance >= 4.2) {
+                farHits += 1;
             } else if (farHits > 0) {
                 farHits--;
             }
@@ -662,7 +667,7 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (farHits >= 24) {
-                onCaughtCheating(player, "reach hack");
+                onCaughtCheating(player, "reach hack/excessive lag");
             }
         }
 
