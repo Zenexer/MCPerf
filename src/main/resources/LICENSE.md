@@ -20,3 +20,4 @@ MCPerf is NOT open source software.
 11. You will compensate Paul Buonopane/Earth2Me in full for all losses/damages resulting from license violations, including any legal and technical fees spent as a result.
 12. Should any portion of this license be deemed unlawful and/or non-applicable, the remainder shall remain in effect to the fullest extent legally possible.
 13. This license is to be enforced under Massachusetts state law.
+14. MCPerf makes probabilistic analyses that are not guaranteed to be free of fault.  It is your responsibility to assess the accuracy of these analyses and take action as appropriate for your specific use case.
