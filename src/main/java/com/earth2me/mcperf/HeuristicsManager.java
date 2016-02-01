@@ -569,7 +569,11 @@ public final class HeuristicsManager extends Manager {
                 info("Very fast upward movement for %s +4: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
             } else if (METRO_FLIGHT_ACCEL.contains(deltaV4)) {  // Metro flight at speed 1.0
                 suspiciousFlyHacks++;
-                info("Suspicious vertical acceleration for %s +1: %d, %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+                if (suspiciousFlyHacks > 1 || obviousFlyHacks > 1 || inAirScore > 1) {
+                    info("Suspicious vertical acceleration for %s +1: %d, %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+                } else {
+                    debug("Suspicious vertical acceleration for %s +1: %d, %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+                }
             } else if (suspiciousFlyHacks > 0 && obviousFlyHacks <= 0) {
                 suspiciousFlyHacks--;
                 if (suspiciousFlyHacks > 0 || obviousFlyHacks > 1 || inAirScore > 1) {
