@@ -41,7 +41,7 @@ public class MCPerfPlugin extends JavaPlugin {
         try {
             saveResource("LICENSE.md", true);
 
-            File license = new File("LICENSE.md");
+            File license = new File(getDataFolder(), "LICENSE.md");
             if (!license.exists()) {
                 throw new RuntimeException("Couldn't verify existence of file: " + license.getAbsolutePath());
             }
@@ -52,7 +52,7 @@ public class MCPerfPlugin extends JavaPlugin {
         }
 
         try {
-            if (!new File("config.yml").exists()) {
+            if (!new File(getDataFolder(), "config.yml").exists()) {
                 saveDefaultConfig();
                 reloadConfig();
             }

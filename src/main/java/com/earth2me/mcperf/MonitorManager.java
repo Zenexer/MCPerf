@@ -6,7 +6,6 @@ import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.player.PlayerChatEvent;
 
 import java.util.Set;
 import java.util.logging.Logger;
@@ -19,7 +18,7 @@ public final class MonitorManager extends Manager {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
-    public void onPlayerChat(@SuppressWarnings("deprecation") PlayerChatEvent event) {
+    public void onPlayerChat(@SuppressWarnings("deprecation") org.bukkit.event.player.PlayerChatEvent event) {
         if (!isEnabled()) {
             return;
         }

@@ -82,10 +82,7 @@ package com.earth2me.mcperf;
 import com.earth2me.mcperf.config.ConfigSetting;
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Server;
+import org.bukkit.*;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -156,11 +153,11 @@ public final class HeuristicsManager extends Manager {
         server.getOnlinePlayers().forEach(this::auditPlayer);
     }
 
-    private Detector getAuraDetector(Player player) {
-        return getAuraDetector(player, true);
+    private Detector getDetector(Player player) {
+        return getDetector(player, true);
     }
 
-    private Detector getAuraDetector(Player player, boolean createIfMissing) {
+    private Detector getDetector(Player player, boolean createIfMissing) {
         Detector detector = detectors.get(player);
         if (detector == null && createIfMissing) {
             detectors.put(player, detector = new Detector(player));
@@ -218,14 +215,14 @@ public final class HeuristicsManager extends Manager {
         }
 
         Player victim = (Player) event.getEntity();
-        getAuraDetector(victim).onDamaged();  // We need to call this even if damager isn't a player.
+        getDetector(victim).onDamaged();  // We need to call this even if damager isn't a player.
 
         if (event.getDamager() instanceof Player) {
             Player attacker = (Player) event.getDamager();
 
             switch (event.getCause()) {
                 case ENTITY_ATTACK:
-                    getAuraDetector(attacker).markHit(victim);
+                    getDetector(attacker).markHit(victim);
                     if (event.getDamage(EntityDamageEvent.DamageModifier.BLOCKING) < 0) {
                         debug("%s is blocking", event.getEntity().getName());
                     }
@@ -242,7 +239,7 @@ public final class HeuristicsManager extends Manager {
     public void onEntityDamageByBlock(EntityDamageByBlockEvent event) {
         if (event.getEntity() instanceof Player) {
             Player player = (Player) event.getEntity();
-            getAuraDetector(player).onDamaged();
+            getDetector(player).onDamaged();
         }
     }
 
@@ -254,15 +251,49 @@ public final class HeuristicsManager extends Manager {
         ItemStack b = inventory.getItem(event.getPreviousSlot());
 
         if (a != null && a.getType() != null && a.getType().isEdible() && (b == null || b.getType() == null || !b.getType().isEdible())) {
-            getAuraDetector(player).onEating();
+            getDetector(player).onEating();
         }
+
+        getDetector(player).onItemHeld();
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isOnGround(Player player) {
+        // As usual, Bukkit deprecated this inappropriately.
+        // The reason they provided: Inconsistent with Entity.isOnGround()
+        // Yes, that's why it'd be overridden.  Duh.  Except they didn't override it, so it's just wrong.
+        return player.isOnGround();
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerVelocity(PlayerVelocityEvent event) {
+        Player player = event.getPlayer();
         Vector velocity = event.getVelocity();
-        if (velocity.length() > 1.0) {
-            debug("Velocity for %s: %s", event.getPlayer().getName(), event.getVelocity());
+
+        if (velocity.getY() == -0.0784000015258789) {
+            debug("%s received knockback-like velocity", player.getName());
+        } else {
+            debug("Velocity for %s: %s; %s; speed %f", player.getName(), velocity, isOnGround(player) ? "on ground" : "in air", player.isFlying() ? player.getFlySpeed() : player.getWalkSpeed());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (!player.isFlying()) {
+            Vector delta = event.getTo().toVector().subtract(event.getFrom().toVector());
+            double deltaV = delta.getY();
+            double deltaH = Math.sqrt(Math.pow(delta.getX(), 2) + Math.pow(delta.getZ(), 2));
+            if (player.getWalkSpeed() != 0.2) {
+                float speed = player.getWalkSpeed();
+                deltaH /= speed * 5;
+            }
+            if (deltaV > 0.5 || (deltaH > 0.6 && deltaV != 0.41999998688697815)) {  // 0.412 is jump while sprinting
+                debug("Movement for %s: %s; H:%.4f, V:%.4f; %s; speed %f", player.getName(), delta, deltaH, deltaV, isOnGround(player) ? "on ground" : "in air", player.getWalkSpeed());
+            }
+            getDetector(player).onMove(deltaH, deltaV);
+        } else {
+            getDetector(player).reset();
         }
     }
 
@@ -273,7 +304,7 @@ public final class HeuristicsManager extends Manager {
         }
 
         Player player = event.getPlayer();
-        Detector detector = getAuraDetector(player);
+        Detector detector = getDetector(player);
 
         switch (event.getAction()) {
             case LEFT_CLICK_AIR:
@@ -297,13 +328,13 @@ public final class HeuristicsManager extends Manager {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerDeath(PlayerDeathEvent event) {
-        getAuraDetector(event.getEntity()).forgiveBlackmarks(forgivenOnDeath);
+        getDetector(event.getEntity()).forgiveBlackmarks(forgivenOnDeath);
 
         EntityDamageEvent damageEvent = event.getEntity().getLastDamageCause();
         if (damageEvent instanceof EntityDamageByEntityEvent) {
             EntityDamageByEntityEvent e = (EntityDamageByEntityEvent) damageEvent;
             if (e.getDamager() instanceof Player) {
-                getAuraDetector((Player) e.getDamager()).onKilled(event.getEntity());
+                getDetector((Player) e.getDamager()).onKilled(event.getEntity());
             }
         }
     }
@@ -327,7 +358,7 @@ public final class HeuristicsManager extends Manager {
 
         Player player = event.getPlayer();
         if (player != null) {
-            getAuraDetector(player).onAttackSpeedTainted();
+            getDetector(player).onAttackSpeedTainted();
         }
     }
 
@@ -394,9 +425,47 @@ public final class HeuristicsManager extends Manager {
         private int suspiciousAims = 0;
         private int farHits = 0;
         private int highSpeedAttacks = 0;
+        private Long lastItemHeldTime = null;
+        private int obviousFlyHacks = 0;
+        private int suspiciousFlyHacks = 0;
 
         public Detector(Player player) {
             this.player = new WeakReference<>(player);
+        }
+
+        public void onMove(double deltaH, double deltaV) {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
+                return;
+            }
+
+            if (deltaH == 0 && (deltaV == 1 || deltaV == -1)) {  // Wurst confirmed
+                obviousFlyHacks++;
+                debug("Obvious fly hack movements for %s +1: %d", player.getName(), obviousFlyHacks);
+            } else if (obviousFlyHacks > 0) {
+                obviousFlyHacks = 0;
+                debug("Reset obvious fly hack movements for %s", player.getName());
+            }
+
+            if ((float) deltaH == 0.98f) {  // Wurst confirmed
+                suspiciousFlyHacks += 4;
+                debug("Suspicious movements for %s +4: %d", player.getName(), suspiciousFlyHacks);
+            } else if (deltaH >= 0.88 && deltaH < 1.5) {
+                suspiciousFlyHacks++;
+                debug("Suspicious movements for %s +1: %d", player.getName(), suspiciousFlyHacks);
+            } else if (deltaH >= 1.5) {
+                getLogger().info(String.format("Suspicious horizontal movement: %s, delta %.4f", player.getName(), deltaH));
+            } else if (suspiciousFlyHacks > 0) {
+                suspiciousFlyHacks--;
+                debug("Decremented suspicious movements for %s -1: %d", player.getName(), suspiciousFlyHacks);
+            }
+
+            if (obviousFlyHacks >= 3) {
+                onCaughtCheating(player, "fly hacks");
+            }
+            if (suspiciousFlyHacks >= 16) {
+                onCaughtCheating(player, "fly/speed hacks");
+            }
         }
 
         public void onKilled(@SuppressWarnings("UnusedParameters") Player killer) {
@@ -518,12 +587,18 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (lastAutosoupCheck != null) {
-                long delay = System.currentTimeMillis() - lastAutosoupCheck;
-                debug("Eating delay: %d", delay);
+                long now = System.currentTimeMillis();
+                long sinceEating = lastItemHeldTime == null ? -1 : now - lastItemHeldTime;
+                long delay = now - lastAutosoupCheck;
+                debug("Eating delay: %d ms; since eating: %d ms", delay, sinceEating);
 
-                if (delay < 200) {
+                if (sinceEating < 1000) {
+                    return;
+                }
+
+                if (delay < 250) {
                     //onCaughtCheating(player, "autosoup");
-                    getLogger().log(Level.INFO, String.format("%s appears to be using autosoup (this test is inaccurate) (delay: %d ms)", player.getName(), delay));
+                    getLogger().log(Level.INFO, String.format("%s appears to be using autosoup (this test is inaccurate) (delay: %d ms; since eating: %d ms)", player.getName(), delay, sinceEating));
                 }
 
                 lastAutosoupCheck = null;
@@ -629,6 +704,8 @@ public final class HeuristicsManager extends Manager {
             suspiciousAims = 0;
             farHits = 0;
             hitDistance = null;
+            suspiciousFlyHacks = 0;
+            obviousFlyHacks = 0;
         }
 
         public void onAttackSpeedTainted() {
@@ -665,7 +742,7 @@ public final class HeuristicsManager extends Manager {
 
         @SuppressWarnings({"deprecation", "RedundantCast"})
         public void markHit(Player target) {
-            getAuraDetector(target).markGotHit();
+            getDetector(target).markGotHit();
 
             if (!isEnabled()) {
                 return;
@@ -805,6 +882,10 @@ public final class HeuristicsManager extends Manager {
         public void forgiveBlackmarks(int count) {
             blackmarks = Math.max(0, blackmarks - count);
             reset();
+        }
+
+        public void onItemHeld() {
+            lastItemHeldTime = System.currentTimeMillis();
         }
     }
 }
