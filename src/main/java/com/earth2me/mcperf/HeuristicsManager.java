@@ -104,6 +104,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class HeuristicsManager extends Manager {
+    private final static Set<Integer> METRO_FLIGHT_ACCEL = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            // These are definitely accurate.
+            802, 807, 808, 943, 949, 951, 1336, 1337, 1345, 1347, 1666, 1667, 1704, 1705, 2227, 2228, 2242, 2245, 2400, 2422, 2423, 2940, 2953, 2954, 3264, 3272, 3458, 3463, 3575, 3578, 3645, 3647, 3687, 3688, 3712, 3713, 3727, 3728, 3736, 3737, 3742,
+            // Not so sure about these ones.
+            60, 100, 167, 278, 279, 289, 464, 465, 481, 773, 775, 1289, 1292, 1560, 1673, 2148, 2153, 2436, 2504, 2962, 3002, 3277, 3301, 3466, 3481, 3580, 3589
+    )));
+
     private final WeakHashMap<Player, Detector> detectors = new WeakHashMap<>();
 
     @Getter
@@ -271,7 +278,7 @@ public final class HeuristicsManager extends Manager {
         Vector velocity = event.getVelocity();
 
         if (velocity.getY() == -0.0784000015258789) {
-            debug("%s received knockback-like velocity", player.getName());
+            debug("%s fell and landed on ground", player.getName());
         } else {
             debug("Velocity for %s: %s; %s; speed %f", player.getName(), velocity, isOnGround(player) ? "on ground" : "in air", player.isFlying() ? player.getFlySpeed() : player.getWalkSpeed());
         }
@@ -288,7 +295,7 @@ public final class HeuristicsManager extends Manager {
                 float speed = player.getWalkSpeed();
                 deltaH /= speed * 5;
             }
-            if (deltaV > 0.5 || (deltaH > 0.6 && deltaV != 0.41999998688697815)) {  // 0.412 is jump while sprinting
+            if (deltaV > 0.5 || (deltaH > 0.6 && deltaV != 0.41999998688697815) || (deltaV > 0 && player.getName().equals("Exabit"))) {  // 0.412 is jump while sprinting
                 debug("Movement for %s: %s; H:%.4f, V:%.4f; %s; speed %f", player.getName(), delta, deltaH, deltaV, isOnGround(player) ? "on ground" : "in air", player.getWalkSpeed());
             }
             getDetector(player).onMove(deltaH, deltaV);
@@ -395,13 +402,23 @@ public final class HeuristicsManager extends Manager {
     }
 
     protected void debug(String format, Object... args) {
-        debug(String.format(format, args));
+        if (isDebugEnabled()) {
+            debug(String.format(format, args));
+        }
     }
 
     protected void debug(String message) {
         if (isDebugEnabled()) {
             println("[MCPerf:Heuristics] " + message);
         }
+    }
+
+    protected void info(String format, Object... args) {
+        info(String.format(format, args));
+    }
+
+    protected void info(String message) {
+        println("[MCPerf:Heuristics] " + message);
     }
 
 
@@ -428,6 +445,11 @@ public final class HeuristicsManager extends Manager {
         private Long lastItemHeldTime = null;
         private int obviousFlyHacks = 0;
         private int suspiciousFlyHacks = 0;
+        private Long firstInAir = null;
+        private int inAirScore = 0;
+        private double lastAirDeltaV = 0;
+        private Double lastAirAccelV = null;
+        private Boolean lastAirAccelGoingUp = null;
 
         public Detector(Player player) {
             this.player = new WeakReference<>(player);
@@ -439,25 +461,122 @@ public final class HeuristicsManager extends Manager {
                 return;
             }
 
-            if (deltaH == 0 && (deltaV == 1 || deltaV == -1)) {  // Wurst confirmed
-                obviousFlyHacks++;
-                debug("Obvious fly hack movements for %s +1: %d", player.getName(), obviousFlyHacks);
-            } else if (obviousFlyHacks > 0) {
-                obviousFlyHacks = 0;
-                debug("Reset obvious fly hack movements for %s", player.getName());
+            int deltaV4s = (int)(deltaV * 10000);
+            int deltaV4 = Math.abs(deltaV4s);
+            int deltaH4 = (int)(deltaH * 10000);
+
+            boolean inAir = !isOnGround(player) && player.getLocation().getX() > 0;
+            if (inAir) {
+                long now = System.currentTimeMillis();
+
+                if (firstInAir == null) {
+                    firstInAir = now;
+                    inAirScore = 1;
+                    lastAirDeltaV = deltaV;
+                    lastAirAccelV = null;
+                    lastAirAccelGoingUp = null;
+                    debug("Entered airspace: %s", player.getName());
+                } else {
+                    double accelV = deltaV - lastAirDeltaV;
+                    int accelV4 = (int)(accelV * 10000);
+                    long timeInAir = now - firstInAir;
+
+                    if (lastAirAccelV != null) {
+                        boolean airAccelGoingUp = accelV > lastAirAccelV;
+                        if (lastAirAccelGoingUp != null && airAccelGoingUp != lastAirAccelGoingUp) {
+                            inAirScore += 8;
+                            debug("In air +8 change in vertical accel^2 direction: %d; %d ms, %s", inAirScore, timeInAir, player.getName());
+                        }
+                        lastAirAccelGoingUp = airAccelGoingUp;
+                    }
+
+                    if (deltaV < -0.38 ) {  // Is this effective?
+                        if (inAirScore > 0) {
+                            inAirScore--;
+                            if (inAirScore > 0 || obviousFlyHacks > 1 || suspiciousFlyHacks > 1) {
+                                info("In air -1: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                            } else {
+                                debug("In air -1: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                            }
+                        } else {
+                            debug("In air, but score already 0 for %s", player.getName());
+                        }
+                    } else if (accelV4 == 4020) {
+                        inAirScore += 8;
+                        info("In air +8 obvious Metro downward accel: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                    } else if (accelV4 == 3332) {
+                        inAirScore += 8;
+                        info("In air +8 obvious Huzuni downward accel: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                    } else if (deltaV > lastAirDeltaV) {
+                        info("In air +6: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        inAirScore += 6;
+                    } else if (deltaV == lastAirDeltaV){
+                        info("In air +2: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        inAirScore += 3;
+                    } else {
+                        // Jumps trigger this
+                        info("Accelerating downward (jumping/falling): %s; %.4f blocks/sec^2", player.getName(), accelV);
+                    }
+
+                    if (timeInAir >= 600 && inAirScore >= 24) {
+                        onCaughtCheating(player, "flight");
+                    } else {
+                        lastAirAccelV = accelV;
+                    }
+                }
+            } else if (firstInAir != null) {
+                debug("Touched ground: %s", player.getName());
+                firstInAir = null;
+                inAirScore = 0;
+                lastAirDeltaV = 0;
+                lastAirAccelV = null;
+                lastAirAccelGoingUp = null;
             }
 
-            if ((float) deltaH == 0.98f) {  // Wurst confirmed
+            if (deltaH == 0 && (deltaV == 1 || deltaV == -1)) {  // Wurst
+                obviousFlyHacks++;
+                if (inAirScore > 1 || obviousFlyHacks > 1 || suspiciousFlyHacks > 1) {
+                    info("Obvious flight hack (Wurst flight) for %s +1: %d", player.getName(), obviousFlyHacks);
+                } else {
+                    debug("Obvious flight hack (Wurst flight) for %s +1: %d", player.getName(), obviousFlyHacks);
+                }
+            } else if (deltaV4 == 3750) {  // Metro
+                obviousFlyHacks += 4;
+                info("Obvious flight hack (Metro flight) for %s +4: %d; %.4f", player.getName(), obviousFlyHacks, deltaV);
+            } else if (deltaV4 == 3749) {  // Huzuni
+                obviousFlyHacks += 4;
+                info("Obvious flight hack (Huzuni flight) for %s +4: %d; %.4f", player.getName(), obviousFlyHacks, deltaV);
+            } else if (deltaH4 == 9183 || deltaH4 == 10014) {  // Wurst speed hacks
+                obviousFlyHacks += 2;
+                info("Obvious speed hack (Wurst speed) for %s +1: %d; %.4f", player.getName(), obviousFlyHacks, deltaH);
+            } else if (obviousFlyHacks > 0) {
+                obviousFlyHacks--;
+                if (obviousFlyHacks > 0 || inAirScore > 1 || suspiciousFlyHacks > 1) {
+                    info("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
+                } else {
+                    debug("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
+                }
+            }
+
+            if (deltaH4 == 9800) {  // Wurst
                 suspiciousFlyHacks += 4;
-                debug("Suspicious movements for %s +4: %d", player.getName(), suspiciousFlyHacks);
-            } else if (deltaH >= 0.88 && deltaH < 1.5) {
+                info("Suspicious flight (Wurst flight) for %s +4: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+            } else if (deltaH4 >= 15000) {
+                suspiciousFlyHacks += 2;
+                info("Very fast horizontal movement for %s +4: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaH);
+            } else if (deltaV4s >= 10000) {
+                suspiciousFlyHacks += 2;
+                info("Very fast upward movement for %s +4: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+            } else if (METRO_FLIGHT_ACCEL.contains(deltaV4)) {  // Metro flight at speed 1.0
                 suspiciousFlyHacks++;
-                debug("Suspicious movements for %s +1: %d", player.getName(), suspiciousFlyHacks);
-            } else if (deltaH >= 1.5) {
-                getLogger().info(String.format("Suspicious horizontal movement: %s, delta %.4f", player.getName(), deltaH));
-            } else if (suspiciousFlyHacks > 0) {
+                info("Suspicious vertical acceleration for %s +1: %d, %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+            } else if (suspiciousFlyHacks > 0 && obviousFlyHacks <= 0) {
                 suspiciousFlyHacks--;
-                debug("Decremented suspicious movements for %s -1: %d", player.getName(), suspiciousFlyHacks);
+                if (suspiciousFlyHacks > 0 || obviousFlyHacks > 1 || inAirScore > 1) {
+                    info("Decremented suspicious movements for %s -1: %d", player.getName(), suspiciousFlyHacks);
+                } else {
+                    debug("Decremented suspicious movements for %s -1: %d", player.getName(), suspiciousFlyHacks);
+                }
             }
 
             if (obviousFlyHacks >= 3) {
@@ -488,9 +607,10 @@ public final class HeuristicsManager extends Manager {
                 autosoupTask = null;
             }
 
-            autosoupTask = getServer().getScheduler().scheduleSyncDelayedTask(getPlugin(), this::checkAutosoup, 2 * 20);
+            //autosoupTask = getServer().getScheduler().scheduleSyncDelayedTask(getPlugin(), this::checkAutosoup, 2 * 20);
         }
 
+        @SuppressWarnings("unused")
         public void checkAutosoup() {
             autosoupTask = null;
 
@@ -521,6 +641,7 @@ public final class HeuristicsManager extends Manager {
                 getServer().getScheduler().cancelTask(autosoupTask);
             }
 
+            player.clear();
             player = null;
         }
 
@@ -706,6 +827,11 @@ public final class HeuristicsManager extends Manager {
             hitDistance = null;
             suspiciousFlyHacks = 0;
             obviousFlyHacks = 0;
+            inAirScore = 0;
+            firstInAir = null;
+            lastAirDeltaV = 0;
+            lastAirAccelGoingUp = null;
+            lastAirAccelV = null;
         }
 
         public void onAttackSpeedTainted() {
