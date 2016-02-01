@@ -534,11 +534,11 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (deltaH == 0 && (deltaV == 1 || deltaV == -1)) {  // Wurst
-                obviousFlyHacks++;
+                obviousFlyHacks += 4;
                 if (inAirScore > 1 || obviousFlyHacks > 1 || suspiciousFlyHacks > 1) {
-                    info("Obvious flight hack (Wurst flight) for %s +1: %d", player.getName(), obviousFlyHacks);
+                    info("Obvious flight hack (Wurst flight) for %s +4: %d", player.getName(), obviousFlyHacks);
                 } else {
-                    debug("Obvious flight hack (Wurst flight) for %s +1: %d", player.getName(), obviousFlyHacks);
+                    debug("Obvious flight hack (Wurst flight) for %s +4: %d", player.getName(), obviousFlyHacks);
                 }
             } else if (deltaV4 == 3750) {  // Metro
                 obviousFlyHacks += 4;
@@ -559,14 +559,18 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (deltaH4 == 9800) {  // Wurst
-                suspiciousFlyHacks += 4;
-                info("Suspicious flight (Wurst flight) for %s +4: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+                suspiciousFlyHacks += 16;
+                info("Suspicious flight (Wurst flight) for %s +16: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
             } else if (deltaH4 >= 15000) {
-                suspiciousFlyHacks += 2;
-                info("Very fast horizontal movement for %s +4: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaH);
-            } else if (deltaV4s >= 10000) {
-                suspiciousFlyHacks += 2;
-                info("Very fast upward movement for %s +4: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+                suspiciousFlyHacks += 16;
+                info("Very fast horizontal movement for %s +16: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaH);
+            } else if (deltaV4 == 10100) {  // Not sure which client this is
+                suspiciousFlyHacks += 24;
+                info("Hack client signature upward movement for %s +24: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+            } else if (deltaV4s > 11200) {
+                // 1.1200 and 1.0192 seem to be PvP-related; knockback, maybe?  Sometimes 1.1084 instead of 1.1200.
+                suspiciousFlyHacks += 16;
+                info("Very fast upward movement for %s +16: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
             } else if (METRO_FLIGHT_ACCEL.contains(deltaV4)) {  // Metro flight at speed 1.0
                 suspiciousFlyHacks++;
                 if (suspiciousFlyHacks > 1 || obviousFlyHacks > 1 || inAirScore > 1) {
@@ -583,10 +587,10 @@ public final class HeuristicsManager extends Manager {
                 }
             }
 
-            if (obviousFlyHacks >= 3) {
+            if (obviousFlyHacks >= 12) {
                 onCaughtCheating(player, "fly hacks");
             }
-            if (suspiciousFlyHacks >= 16) {
+            if (suspiciousFlyHacks >= 64) {
                 onCaughtCheating(player, "fly/speed hacks");
             }
         }
