@@ -51,4 +51,5 @@ heuristicsManager:
     # %4$s = UUID, with hyphens
     - 'kick %1$s [MCPerf] Cheating: %2$s'
 blacklistManager:
+  enabled: false
   blocks: []

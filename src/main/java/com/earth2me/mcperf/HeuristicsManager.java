@@ -80,9 +80,11 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.mojang.MathHelper;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -104,12 +106,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class HeuristicsManager extends Manager {
-    private final static Set<Integer> METRO_FLIGHT_ACCEL = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-            // These are definitely accurate.
-            802, 807, 808, 943, 949, 951, 1336, 1337, 1345, 1347, 1666, 1667, 1704, 1705, 2227, 2228, 2242, 2245, 2400, 2422, 2423, 2940, 2953, 2954, 3264, 3272, 3458, 3463, 3575, 3578, 3645, 3647, 3687, 3688, 3712, 3713, 3727, 3728, 3736, 3737, 3742,
-            // Not so sure about these ones.
-            60, 100, 167, 278, 279, 289, 464, 465, 481, 773, 775, 1289, 1292, 1560, 1673, 2148, 2153, 2436, 2504, 2962, 3002, 3277, 3301, 3466, 3481, 3580, 3589
-    )));
+    private static final Set<Integer> JUMP_ACCELS = new HashSet<>(Arrays.asList(-850, -1684, -2501, -3331, -4115, -4884, -3487, -752, -5637, -6375, -7098, -4372));
 
     private final WeakHashMap<Player, Detector> detectors = new WeakHashMap<>();
 
@@ -222,14 +219,18 @@ public final class HeuristicsManager extends Manager {
         }
 
         Player victim = (Player) event.getEntity();
-        getDetector(victim).onDamaged();  // We need to call this even if damager isn't a player.
+        Detector victimD = getDetector(victim);
+        victimD.onDamaged();  // We need to call this even if damager isn't a player.
 
         if (event.getDamager() instanceof Player) {
             Player attacker = (Player) event.getDamager();
+            Detector attackerD = getDetector(attacker);
+
+            victimD.markGotHit(attacker);
 
             switch (event.getCause()) {
                 case ENTITY_ATTACK:
-                    getDetector(attacker).markHit(victim);
+                    attackerD.markHit(victim);
                     if (event.getDamage(EntityDamageEvent.DamageModifier.BLOCKING) < 0) {
                         debug("%s is blocking", event.getEntity().getName());
                     }
@@ -265,7 +266,7 @@ public final class HeuristicsManager extends Manager {
     }
 
     @SuppressWarnings("deprecation")
-    private static boolean isOnGround(Player player) {
+    private boolean isOnGround(Player player) {
         // As usual, Bukkit deprecated this inappropriately.
         // The reason they provided: Inconsistent with Entity.isOnGround()
         // Yes, that's why it'd be overridden.  Duh.  Except they didn't override it, so it's just wrong.
@@ -276,18 +277,19 @@ public final class HeuristicsManager extends Manager {
     public void onPlayerVelocity(PlayerVelocityEvent event) {
         Player player = event.getPlayer();
         Vector velocity = event.getVelocity();
+        //Detector detector = getDetector(player);
 
-        if (velocity.getY() == -0.0784000015258789) {
-            debug("%s fell and landed on ground", player.getName());
+        if (velocity.getY() == -0.0784000015258789 && velocity.getX() == 0.0 && velocity.getZ() == 0.0) {
+            info("Standard damage velocity event: %s", player.getName());
         } else {
-            debug("Velocity for %s: %s; %s; speed %f", player.getName(), velocity, isOnGround(player) ? "on ground" : "in air", player.isFlying() ? player.getFlySpeed() : player.getWalkSpeed());
+            info("Velocity for %s: %s; %s; speed %f", player.getName(), velocity, isOnGround(player) ? "on ground" : "in air", player.isFlying() ? player.getFlySpeed() : player.getWalkSpeed());
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        if (!player.isFlying()) {
+        if (!player.isFlying() && player.getGameMode() != GameMode.CREATIVE && player.getGameMode() != GameMode.SPECTATOR) {
             Vector delta = event.getTo().toVector().subtract(event.getFrom().toVector());
             double deltaV = delta.getY();
             double deltaH = Math.sqrt(Math.pow(delta.getX(), 2) + Math.pow(delta.getZ(), 2));
@@ -295,11 +297,12 @@ public final class HeuristicsManager extends Manager {
                 float speed = player.getWalkSpeed();
                 deltaH /= speed * 5;
             }
-            if (deltaV > 0.5 || (deltaH > 0.6 && deltaV != 0.41999998688697815) || (deltaV > 0 && player.getName().equals("Exabit"))) {  // 0.412 is jump while sprinting
-                debug("Movement for %s: %s; H:%.4f, V:%.4f; %s; speed %f", player.getName(), delta, deltaH, deltaV, isOnGround(player) ? "on ground" : "in air", player.getWalkSpeed());
+            if (deltaV > 0.5 || (deltaH > 0.6 && deltaV != 0.41999998688697815)) {  // 0.412 is jump while sprinting
+                debug("Movement for %s: %s; H:%.6f, V:%.6f; %s; speed %f", player.getName(), delta, deltaH, deltaV, isOnGround(player) ? "on ground" : "in air", player.getWalkSpeed());
             }
             getDetector(player).onMove(deltaH, deltaV);
         } else {
+            //debug("Reset due to flight/game mode: %s", player.getName());
             getDetector(player).reset();
         }
     }
@@ -401,6 +404,15 @@ public final class HeuristicsManager extends Manager {
         }
     }
 
+    private static final UUID devId = UUID.fromString("04e66058-ddf6-4520-93b2-3bc3f675c132");
+
+    protected void dev(String message) {
+        Player dev = getServer().getPlayer(devId);
+        if (dev != null) {
+            dev.sendMessage(":: " + message);
+        }
+    }
+
     protected void debug(String format, Object... args) {
         if (isDebugEnabled()) {
             debug(String.format(format, args));
@@ -410,6 +422,7 @@ public final class HeuristicsManager extends Manager {
     protected void debug(String message) {
         if (isDebugEnabled()) {
             println("[MCPerf:Heuristics] " + message);
+            dev(message);
         }
     }
 
@@ -419,6 +432,7 @@ public final class HeuristicsManager extends Manager {
 
     protected void info(String message) {
         println("[MCPerf:Heuristics] " + message);
+        dev(message);
     }
 
 
@@ -450,9 +464,88 @@ public final class HeuristicsManager extends Manager {
         private double lastAirDeltaV = 0;
         private Double lastAirAccelV = null;
         private Boolean lastAirAccelGoingUp = null;
+        private int jumpingCount = 0;
+        private int fallingCount = 0;
+        private Long lastKnockbackTime = null;
+        private int antiKnockbackCount = 0;
+        private final long knockbackTimeout = 500;
+        private final long consecutiveKnockbackTimeout = 300;
+        private long lastLadderTime = 0;
 
         public Detector(Player player) {
             this.player = new WeakReference<>(player);
+        }
+
+        public void onKnockback(Entity damager) {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
+                return;
+            }
+
+            long now = System.currentTimeMillis();
+
+            if (lastKnockbackTime != null) {
+                long timeSinceKnockback = now - lastKnockbackTime;
+                if (timeSinceKnockback > consecutiveKnockbackTimeout) {
+                    info("Anti-knockback +6: %d; %s; %d ms delay; subsequent knockback", antiKnockbackCount + 6, player.getName(), timeSinceKnockback);
+                    onAntiKnockback(6, 1);
+                }
+            } else {
+                Location pl = player.getLocation();
+                Vector pv = pl.toVector();
+                Vector dv = damager.getLocation().toVector();
+                double distX = dv.getX() - pv.getX();
+                double distZ = dv.getZ() - pv.getZ();
+                double dist2 = distX * distX + distZ * distZ;
+
+                if (dist2 < 0.0001) {
+                    // Direction is random
+                    return;
+                }
+
+                player.getVelocity();
+
+                //float yaw = (float) (MathHelper.yaw(distZ, distX) * 180.0D / 3.1415927410125732D - (double) pl.getYaw());
+                float dist = MathHelper.sqrt(dist2);
+                float factor = 0.4F;
+                Vector mot = player.getVelocity();
+                double motX = mot.getX();
+                double motY = mot.getY();
+                double motZ = mot.getZ();
+                motX /= 2.0D;
+                motY /= 2.0D;
+                motZ /= 2.0D;
+                motX -= distX / (double) dist * (double) factor;
+                motY += (double) factor;
+                motZ -= distZ / (double) dist * (double) factor;
+                if (motY > 0.4000000059604645D) {
+                    motY = 0.4000000059604645D;
+                }
+                Vector change = new Vector(motX, motY, motZ).subtract(mot);
+                mot.setX(motX);
+                mot.setY(motY);
+                mot.setZ(motZ);
+
+                info("Expected knockback for %s: %s", player.getName(), change.toString());
+
+                // TODO: Account for attribute: generic.knockbackResistance
+
+                lastKnockbackTime = now;
+            }
+        }
+
+        private void onAntiKnockback(int inc, int id) {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
+                return;
+            }
+
+            antiKnockbackCount += inc;
+
+            if (antiKnockbackCount >= 24) {
+                info("TRIGGERED anti-knockback#%d %d: %s", id, antiKnockbackCount, player.getName());
+                //onCaughtCheating(player, String.format("anti-knockback#%d", id));
+            }
         }
 
         public void onMove(double deltaH, double deltaV) {
@@ -461,14 +554,59 @@ public final class HeuristicsManager extends Manager {
                 return;
             }
 
-            int deltaV4s = (int)(deltaV * 10000);
+            int deltaV4s = (int) (deltaV * 10000);
             int deltaV4 = Math.abs(deltaV4s);
-            int deltaH4 = (int)(deltaH * 10000);
+            int deltaH4 = (int) (deltaH * 10000);
+            boolean inAir = !isOnGround(player) && player.getLocation().getY() >= 0.0;
+            long now = System.currentTimeMillis();
 
-            boolean inAir = !isOnGround(player) && player.getLocation().getX() > 0;
+            if (lastKnockbackTime != null) {
+                long timeSinceKnockback = now - lastKnockbackTime;
+
+                if (timeSinceKnockback <= knockbackTimeout && deltaV4s <= 0) {
+                    debug("Knockback grace period: %s", player.getName());
+                } else {
+                    lastKnockbackTime = null;
+
+                    if (timeSinceKnockback <= knockbackTimeout && deltaV4s >= 0) {
+                        if (antiKnockbackCount > 0) {
+                            antiKnockbackCount--;
+                            info("Knockback check passed -1: %d; %s; %d ms delay; V: %.6f", antiKnockbackCount, player.getName(), timeSinceKnockback, deltaV);
+                        } else {
+                            debug("Received knockback: %d; %s; %d ms delay; V: %.6f", antiKnockbackCount, player.getName(), timeSinceKnockback, deltaV);
+                        }
+                    } else {
+                        final int diff = 5;
+                        info("Anti-knockback +%d: %d; %s; %d ms delay; V: %.6f", diff, antiKnockbackCount + diff, player.getName(), timeSinceKnockback, deltaV);
+                        onAntiKnockback(diff, 1);
+                    }
+                }
+            }
+
+            if (deltaH == 0.0 && deltaV == 0.0) {
+                // Otherwise evasion is possible by rotating head often
+                return;
+            }
+
+            boolean jumping = false;
+            boolean falling = false;
+
+            World world = player.getLocation().getWorld();
+            Block bottom = world.getBlockAt(player.getLocation());
+            Block top = world.getBlockAt(player.getEyeLocation());
+            long ladderTimeDelta = now - lastLadderTime;
+            if (bottom.getType() == Material.LADDER || top.getType() == Material.LADDER) {
+                inAir = false;
+                resetFlight();
+                lastLadderTime = now;
+                debug("On ladder: %s", player.getName());
+            } else if (ladderTimeDelta <= 800) {
+                inAir = false;
+                resetFlight();
+                debug("Recently on ladder: %s", player.getName());
+            }
+
             if (inAir) {
-                long now = System.currentTimeMillis();
-
                 if (firstInAir == null) {
                     firstInAir = now;
                     inAirScore = 1;
@@ -477,120 +615,159 @@ public final class HeuristicsManager extends Manager {
                     lastAirAccelGoingUp = null;
                     debug("Entered airspace: %s", player.getName());
                 } else {
+                    final int MAX_FALLING_COUNT = 4;
+                    final int NORMAL_JUMPING_COUNT = 10;  // Often only 9
+
                     double accelV = deltaV - lastAirDeltaV;
-                    int accelV4 = (int)(accelV * 10000);
+                    int accelV4s = (int) (accelV * 10000);
+                    @SuppressWarnings("unused")
+                    int accelV4 = Math.abs(accelV4s);
                     long timeInAir = now - firstInAir;
 
                     if (lastAirAccelV != null) {
                         boolean airAccelGoingUp = accelV > lastAirAccelV;
                         if (lastAirAccelGoingUp != null && airAccelGoingUp != lastAirAccelGoingUp) {
-                            inAirScore += 8;
-                            debug("In air +8 change in vertical accel^2 direction: %d; %d ms, %s", inAirScore, timeInAir, player.getName());
+                            if (jumpingCount == 9) {
+                                debug("Ignoring expected vertical jerk from jump: %s", player.getName());
+                            } else {
+                                inAirScore += 8;
+                                info("In air +8 vertical jerk: %d; %d ms, %s", inAirScore, timeInAir, player.getName());
+                            }
                         }
                         lastAirAccelGoingUp = airAccelGoingUp;
                     }
 
-                    if (deltaV < -0.38 ) {  // Is this effective?
+                    if (deltaV == 0) {
+                        inAirScore += 1;
+                        info("In air, no vertical velocity +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                    } else if (accelV4 == 4020) {
+                        inAirScore += 8;
+                        info("Vertical accel Metro +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                    } else if (accelV4 == 3332) {
+                        inAirScore += 8;
+                        info("Vertical accel Huzuni +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                    } else if (accelV4s > 0) {
+                        inAirScore += 2;
+                        info("Upwards accel (unnatural) +2: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                    } else if (jumpingCount <= 0 && (accelV4s == -752 || accelV4s == -1490 || accelV4s == -2213)) {
+                        falling = true;
+                        fallingCount++;
+
+                        if (fallingCount <= 1 && JUMP_ACCELS.contains(accelV4s)) {
+                            // Collision for -752, at minimum.
+                            jumping = true;
+                            jumpingCount++;
+                            debug("Jumping %d/%d+ or falling %d/%d: %s; %.6f blocks/sec^2", jumpingCount, NORMAL_JUMPING_COUNT, fallingCount, MAX_FALLING_COUNT, player.getName(), accelV);
+                        } else {
+                            // Occasionally one is repeated, so > 4
+                            debug("Falling%s %d/%d: %s; %.6f blocks/sec^2", fallingCount > MAX_FALLING_COUNT ? " (suspicious)" : "", fallingCount, MAX_FALLING_COUNT, player.getName(), accelV);
+                            // TODO: As hack clients get smarter, we'll likely need to kick when fallingCount > some number
+                        }
+                    } else if (JUMP_ACCELS.contains(accelV4s)) {
+                        jumping = true;
+                        jumpingCount++;
+                        // Normally not all elements are used, so there's a bit of padding here
+                        debug("Jumping%s %d/%d+: %s; %.6f blocks/sec^2", jumpingCount > NORMAL_JUMPING_COUNT ? " (extra-high)" : "", jumpingCount, NORMAL_JUMPING_COUNT, player.getName(), accelV);
+                        // TODO: As hack clients get smarter, we'll likely need to kick when jumpingCount > some number
+                    } else if (deltaV4s < 0) {
                         if (inAirScore > 0) {
                             inAirScore--;
                             if (inAirScore > 0 || obviousFlyHacks > 1 || suspiciousFlyHacks > 1) {
-                                info("In air -1: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                                info("Falling -1: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                             } else {
-                                debug("In air -1: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                                debug("Falling -1: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                             }
                         } else {
-                            debug("In air, but score already 0 for %s", player.getName());
+                            debug("Falling: %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", timeInAir, deltaV, accelV, player.getName());
                         }
-                    } else if (accelV4 == 4020) {
-                        inAirScore += 8;
-                        info("In air +8 obvious Metro downward accel: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
-                    } else if (accelV4 == 3332) {
-                        inAirScore += 8;
-                        info("In air +8 obvious Huzuni downward accel: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
-                    } else if (deltaV > lastAirDeltaV) {
-                        info("In air +6: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
-                        inAirScore += 6;
-                    } else if (deltaV == lastAirDeltaV){
-                        info("In air +2: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
-                        inAirScore += 3;
-                    } else {
-                        // Jumps trigger this
-                        info("Accelerating downward (jumping/falling): %s; %.4f blocks/sec^2", player.getName(), accelV);
+                    } else if (deltaV4s > 0 && accelV4s > 0) {
+                        fallingCount++;
+                        falling = true;
+                        if (jumpingCount > 1) {
+                            jumpingCount++;
+                            jumping = true;
+                        }
+
+                        inAirScore += 32;
+                        info("Falling but slowing down +32: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                    } else if (deltaV4s > 0) {
+                        debug("Rising: %d; %d ms; %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                     }
 
-                    if (timeInAir >= 600 && inAirScore >= 24) {
+                    if (timeInAir >= 600 && inAirScore >= 24) {  // TODO: Use packet count as well as time; helps prevent lag
+                        // TODO: Enderpearls might break this
                         onCaughtCheating(player, "flight");
+                    } else if (timeInAir > 1200 && (deltaV4s >= 0 || (accelV4s >= 0 && lastAirAccelV != null && lastAirAccelV >= 0))) {
+                        onCaughtCheating(player, "flight/floating");
                     } else {
                         lastAirAccelV = accelV;
                     }
                 }
             } else if (firstInAir != null) {
                 debug("Touched ground: %s", player.getName());
-                firstInAir = null;
-                inAirScore = 0;
-                lastAirDeltaV = 0;
-                lastAirAccelV = null;
-                lastAirAccelGoingUp = null;
+                resetFlight();
+            }
+
+            if (!falling && fallingCount != 0) {
+                fallingCount = 0;
+            }
+            if (!jumping && jumpingCount != 0) {
+                jumpingCount = 0;
             }
 
             if (deltaH == 0 && (deltaV == 1 || deltaV == -1)) {  // Wurst
                 obviousFlyHacks += 4;
-                if (inAirScore > 1 || obviousFlyHacks > 1 || suspiciousFlyHacks > 1) {
-                    info("Obvious flight hack (Wurst flight) for %s +4: %d", player.getName(), obviousFlyHacks);
-                } else {
-                    debug("Obvious flight hack (Wurst flight) for %s +4: %d", player.getName(), obviousFlyHacks);
-                }
+                info("Obvious flight hack (Wurst flight) for %s +4: %d", player.getName(), obviousFlyHacks);
             } else if (deltaV4 == 3750) {  // Metro
                 obviousFlyHacks += 4;
-                info("Obvious flight hack (Metro flight) for %s +4: %d; %.4f", player.getName(), obviousFlyHacks, deltaV);
+                info("Obvious flight hack (Metro flight) for %s +4: %d; %.6f", player.getName(), obviousFlyHacks, deltaV);
             } else if (deltaV4 == 3749) {  // Huzuni
                 obviousFlyHacks += 4;
-                info("Obvious flight hack (Huzuni flight) for %s +4: %d; %.4f", player.getName(), obviousFlyHacks, deltaV);
+                info("Obvious flight hack (Huzuni flight) for %s +4: %d; %.6f", player.getName(), obviousFlyHacks, deltaV);
             } else if (deltaH4 == 9183 || deltaH4 == 10014) {  // Wurst speed hacks
                 obviousFlyHacks += 2;
-                info("Obvious speed hack (Wurst speed) for %s +1: %d; %.4f", player.getName(), obviousFlyHacks, deltaH);
+                info("Obvious speed hack (Wurst speed) for %s +1: %d; %.6f", player.getName(), obviousFlyHacks, deltaH);
+            } else if (deltaV4 > 5000 || (deltaH4 > 6000 && deltaV4 != 4199 && deltaV4 != 4200)) {  // 0.42 is jump while sprinting
+                if (obviousFlyHacks > 0) {
+                    info("Suspicious movement amount; not decrementing fly hacks: %s; H: %.6f; V: %.6f", player.getName(), deltaH, deltaV);
+                }
             } else if (obviousFlyHacks > 0) {
                 obviousFlyHacks--;
-                if (obviousFlyHacks > 0 || inAirScore > 1 || suspiciousFlyHacks > 1) {
-                    info("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
-                } else {
-                    debug("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
-                }
+                info("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
             }
 
             if (deltaH4 == 9800) {  // Wurst
-                suspiciousFlyHacks += 16;
-                info("Suspicious flight (Wurst flight) for %s +16: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
-            } else if (deltaH4 >= 15000) {
-                suspiciousFlyHacks += 16;
-                info("Very fast horizontal movement for %s +16: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaH);
+                suspiciousFlyHacks += 160;
+                info("Suspicious flight (Wurst flight) for %s +160: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaV);
             } else if (deltaV4 == 10100) {  // Not sure which client this is
-                suspiciousFlyHacks += 24;
-                info("Hack client signature upward movement for %s +24: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+                suspiciousFlyHacks += 240;
+                info("Hack client signature upward movement for %s +240: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaV);
             } else if (deltaV4s > 11200) {
                 // 1.1200 and 1.0192 seem to be PvP-related; knockback, maybe?  Sometimes 1.1084 instead of 1.1200.
-                suspiciousFlyHacks += 16;
-                info("Very fast upward movement for %s +16: %d; %.4f", player.getName(), suspiciousFlyHacks, deltaV);
-            } else if (METRO_FLIGHT_ACCEL.contains(deltaV4)) {  // Metro flight at speed 1.0
-                suspiciousFlyHacks++;
-                if (suspiciousFlyHacks > 1 || obviousFlyHacks > 1 || inAirScore > 1) {
-                    info("Suspicious vertical acceleration for %s +1: %d, %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+                suspiciousFlyHacks += 160;
+            } else if (deltaH4 >= 30000) {
+                suspiciousFlyHacks += 160;
+                info("Very fast horizontal movement for %s +160: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
+            } else if (deltaH4 >= 12000) {
+                suspiciousFlyHacks += 60;
+                debug("Moderately fast horizontal movement for %s +60: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
+            } else if (deltaH4 >= 9800) {  // Wurst
+                if (deltaV4 == 0) {
+                    suspiciousFlyHacks += 80;
+                    debug("Slightly fast and suspicious horizontal movement for %s +80: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
                 } else {
-                    debug("Suspicious vertical acceleration for %s +1: %d, %.4f", player.getName(), suspiciousFlyHacks, deltaV);
+                    suspiciousFlyHacks += 20;
+                    debug("Slightly fast horizontal movement for %s +20: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
                 }
             } else if (suspiciousFlyHacks > 0 && obviousFlyHacks <= 0) {
-                suspiciousFlyHacks--;
-                if (suspiciousFlyHacks > 0 || obviousFlyHacks > 1 || inAirScore > 1) {
-                    info("Decremented suspicious movements for %s -1: %d", player.getName(), suspiciousFlyHacks);
-                } else {
-                    debug("Decremented suspicious movements for %s -1: %d", player.getName(), suspiciousFlyHacks);
-                }
+                suspiciousFlyHacks -= 4;
+                debug("Decremented suspicious movements for %s -4: %d", player.getName(), suspiciousFlyHacks);
             }
 
             if (obviousFlyHacks >= 12) {
                 onCaughtCheating(player, "fly hacks");
             }
-            if (suspiciousFlyHacks >= 64) {
+            if (suspiciousFlyHacks >= 640) {
                 onCaughtCheating(player, "fly/speed hacks");
             }
         }
@@ -769,8 +946,9 @@ public final class HeuristicsManager extends Manager {
             return distance;
         }
 
-        private void markGotHit() {
-            reset();
+        private void markGotHit(Entity entity) {
+            resetAttack();
+            onKnockback(entity);
         }
 
         public void markMiss() {
@@ -820,30 +998,52 @@ public final class HeuristicsManager extends Manager {
             update();
         }
 
-        public void resetSpeed() {
+        public void resetAttackSpeed() {
             suspiciousHits = 0;
             misses = 0;
             highSpeedAttacks = 0;
         }
 
-        public void reset() {
-            resetSpeed();
+        public void resetAttack() {
+            resetAttackSpeed();
 
             missDistance = null;
             suspiciousAims = 0;
             farHits = 0;
             hitDistance = null;
+        }
+
+        public void resetFlight() {
+            firstInAir = null;
+            inAirScore = 0;
+            lastAirDeltaV = 0;
+            lastAirAccelV = null;
+            lastAirAccelGoingUp = null;
+            fallingCount = 0;
+            jumpingCount = 0;
+            lastLadderTime = 0;
+        }
+
+        public void resetFlightHistory() {
+            resetFlight();
+
             suspiciousFlyHacks = 0;
             obviousFlyHacks = 0;
-            inAirScore = 0;
-            firstInAir = null;
-            lastAirDeltaV = 0;
-            lastAirAccelGoingUp = null;
-            lastAirAccelV = null;
+        }
+
+        public void resetKnockback() {
+            antiKnockbackCount = 0;
+            lastKnockbackTime = null;
+        }
+
+        public void reset() {
+            resetAttack();
+            resetFlightHistory();
+            resetKnockback();
         }
 
         public void onAttackSpeedTainted() {
-            resetSpeed();
+            resetAttackSpeed();
         }
 
         private void update() {
@@ -857,10 +1057,10 @@ public final class HeuristicsManager extends Manager {
             if (deltaTime != null) {
                 if (deltaTime > 1750) {
                     debug("Initial attack: %d ms", deltaTime);
-                    reset();
+                    resetAttack();
                 } else if (deltaTime > 75) {
                     debug("Normal attack: %d ms", deltaTime);
-                    resetSpeed();
+                    resetAttackSpeed();
                 } else {
                     highSpeedAttacks++;
                     debug("High-speed attack %d: %d ms", highSpeedAttacks, deltaTime);
@@ -876,13 +1076,10 @@ public final class HeuristicsManager extends Manager {
 
         @SuppressWarnings({"deprecation", "RedundantCast"})
         public void markHit(Player target) {
-            getDetector(target).markGotHit();
-
-            if (!isEnabled()) {
+            Player player = getPlayerIfEnabled();
+            if (player == null) {
                 return;
             }
-
-            Player player = getPlayer();
 
             // Variance: How far from the eye point the hit occurred.
             Location a = player.getEyeLocation();
@@ -927,7 +1124,8 @@ public final class HeuristicsManager extends Manager {
                 farHits += 4;
             } else if (distance >= 5) {
                 farHits += 2;
-            } if (distance >= 4.2) {
+            }
+            if (distance >= 4.2) {
                 farHits += 1;
             } else if (farHits > 0) {
                 farHits--;
@@ -986,6 +1184,7 @@ public final class HeuristicsManager extends Manager {
             return player.get();
         }
 
+        @SuppressWarnings("unused")
         public boolean isEnabled() {
             return getPlayerIfEnabled() != null;
         }
@@ -1014,8 +1213,17 @@ public final class HeuristicsManager extends Manager {
         }
 
         public void forgiveBlackmarks(int count) {
-            blackmarks = Math.max(0, blackmarks - count);
-            reset();
+            Player player = getPlayer();
+            if (player == null) {
+                return;
+            }
+
+            if (blackmarks > 0) {
+                blackmarks = Math.max(0, blackmarks - count);
+                info("Forgiven %d blackmark(s): %d; %s", count, blackmarks, player.getName());
+            }
+
+            resetAttack();
         }
 
         public void onItemHeld() {
