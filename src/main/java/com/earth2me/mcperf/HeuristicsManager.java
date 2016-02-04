@@ -84,7 +84,6 @@ import com.earth2me.mcperf.mojang.MathHelper;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.*;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -280,9 +279,9 @@ public final class HeuristicsManager extends Manager {
         //Detector detector = getDetector(player);
 
         if (velocity.getY() == -0.0784000015258789 && velocity.getX() == 0.0 && velocity.getZ() == 0.0) {
-            info("Standard damage velocity event: %s", player.getName());
+            debug("Standard damage velocity event: %s", player.getName());
         } else {
-            info("Velocity for %s: %s; %s; speed %f", player.getName(), velocity, isOnGround(player) ? "on ground" : "in air", player.isFlying() ? player.getFlySpeed() : player.getWalkSpeed());
+            debug("Velocity for %s: %s; %s; speed %f", player.getName(), velocity, isOnGround(player) ? "on ground" : "in air", player.isFlying() ? player.getFlySpeed() : player.getWalkSpeed());
         }
     }
 
@@ -435,6 +434,22 @@ public final class HeuristicsManager extends Manager {
         dev(message);
     }
 
+    private static boolean isClimbable(Material material) {
+        switch (material) {
+            case LADDER:
+            case WATER:
+            case STATIONARY_WATER:
+            case LAVA:
+            case STATIONARY_LAVA:
+            case VINE:
+            case WEB:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
 
     private class Detector {
         private WeakReference<Player> player;
@@ -470,7 +485,7 @@ public final class HeuristicsManager extends Manager {
         private int antiKnockbackCount = 0;
         private final long knockbackTimeout = 500;
         private final long consecutiveKnockbackTimeout = 300;
-        private long lastLadderTime = 0;
+        private long lastClimbableTime = 0;
 
         public Detector(Player player) {
             this.player = new WeakReference<>(player);
@@ -487,7 +502,7 @@ public final class HeuristicsManager extends Manager {
             if (lastKnockbackTime != null) {
                 long timeSinceKnockback = now - lastKnockbackTime;
                 if (timeSinceKnockback > consecutiveKnockbackTimeout) {
-                    info("Anti-knockback +6: %d; %s; %d ms delay; subsequent knockback", antiKnockbackCount + 6, player.getName(), timeSinceKnockback);
+                    debug("Anti-knockback +6: %d; %s; %d ms delay; subsequent knockback", antiKnockbackCount + 6, player.getName(), timeSinceKnockback);
                     onAntiKnockback(6, 1);
                 }
             } else {
@@ -526,7 +541,7 @@ public final class HeuristicsManager extends Manager {
                 mot.setY(motY);
                 mot.setZ(motZ);
 
-                info("Expected knockback for %s: %s", player.getName(), change.toString());
+                debug("Expected knockback for %s: %s", player.getName(), change.toString());
 
                 // TODO: Account for attribute: generic.knockbackResistance
 
@@ -559,6 +574,7 @@ public final class HeuristicsManager extends Manager {
             int deltaH4 = (int) (deltaH * 10000);
             boolean inAir = !isOnGround(player) && player.getLocation().getY() >= 0.0;
             long now = System.currentTimeMillis();
+            Long preLastKnockbackTime = lastKnockbackTime;
 
             if (lastKnockbackTime != null) {
                 long timeSinceKnockback = now - lastKnockbackTime;
@@ -571,13 +587,13 @@ public final class HeuristicsManager extends Manager {
                     if (timeSinceKnockback <= knockbackTimeout && deltaV4s >= 0) {
                         if (antiKnockbackCount > 0) {
                             antiKnockbackCount--;
-                            info("Knockback check passed -1: %d; %s; %d ms delay; V: %.6f", antiKnockbackCount, player.getName(), timeSinceKnockback, deltaV);
+                            debug("Knockback check passed -1: %d; %s; %d ms delay; V: %.6f", antiKnockbackCount, player.getName(), timeSinceKnockback, deltaV);
                         } else {
                             debug("Received knockback: %d; %s; %d ms delay; V: %.6f", antiKnockbackCount, player.getName(), timeSinceKnockback, deltaV);
                         }
                     } else {
                         final int diff = 5;
-                        info("Anti-knockback +%d: %d; %s; %d ms delay; V: %.6f", diff, antiKnockbackCount + diff, player.getName(), timeSinceKnockback, deltaV);
+                        debug("Anti-knockback +%d: %d; %s; %d ms delay; V: %.6f", diff, antiKnockbackCount + diff, player.getName(), timeSinceKnockback, deltaV);
                         onAntiKnockback(diff, 1);
                     }
                 }
@@ -591,19 +607,32 @@ public final class HeuristicsManager extends Manager {
             boolean jumping = false;
             boolean falling = false;
 
-            World world = player.getLocation().getWorld();
-            Block bottom = world.getBlockAt(player.getLocation());
-            Block top = world.getBlockAt(player.getEyeLocation());
-            long ladderTimeDelta = now - lastLadderTime;
-            if (bottom.getType() == Material.LADDER || top.getType() == Material.LADDER) {
+            Location location = player.getLocation();
+            World world = location.getWorld();
+            long climbableTimeDelta = now - lastClimbableTime;
+            boolean climbing = false;
+            int x = location.getBlockX();
+            int y = location.getBlockY();
+            int z = location.getBlockZ();
+            for (int ix = x - 1; ix <= x + 1; ix++) {
+                for (int iz = z - 1; iz <= z + 1; iz++) {
+                    for (int iy = y; iy <= y + 1; iy++) {
+                        if (isClimbable(world.getBlockAt(ix, iy, iz).getType())) {
+                            climbing = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (climbing) {
                 inAir = false;
                 resetFlight();
-                lastLadderTime = now;
-                debug("On ladder: %s", player.getName());
-            } else if (ladderTimeDelta <= 800) {
+                lastClimbableTime = now;
+                debug("On climbable: %s", player.getName());
+            } else if (climbableTimeDelta <= 800) {
                 inAir = false;
                 resetFlight();
-                debug("Recently on ladder: %s", player.getName());
+                debug("Recently on climbable: %s", player.getName());
             }
 
             if (inAir) {
@@ -627,28 +656,51 @@ public final class HeuristicsManager extends Manager {
                     if (lastAirAccelV != null) {
                         boolean airAccelGoingUp = accelV > lastAirAccelV;
                         if (lastAirAccelGoingUp != null && airAccelGoingUp != lastAirAccelGoingUp) {
-                            if (jumpingCount == 9) {
+                            if (jumpingCount > 1) {
                                 debug("Ignoring expected vertical jerk from jump: %s", player.getName());
+                            } else if (preLastKnockbackTime != null && now - preLastKnockbackTime < 600) {
+                                debug("Ignoring expected vertical jerk from knockback: %s", player.getName());
                             } else {
-                                inAirScore += 8;
-                                info("In air +8 vertical jerk: %d; %d ms, %s", inAirScore, timeInAir, player.getName());
+                                if (inAirScore > 8) {
+                                    inAirScore += 4;
+                                    info("In-air +4 vertical jerk: %d; %d ms, %s", inAirScore, timeInAir, player.getName());
+                                } else {
+                                    debug("Ignoring in-air vertical jerk: %d; %d ms, %s", inAirScore, timeInAir, player.getName());
+                                }
                             }
                         }
                         lastAirAccelGoingUp = airAccelGoingUp;
                     }
 
                     if (deltaV == 0) {
-                        inAirScore += 1;
-                        info("In air, no vertical velocity +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        if (accelV == 0.0 && lastAirAccelV != null && lastAirAccelV == 0.0) {
+                            inAirScore += 8;
+                            info("In air, no vertical velocity +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        }
                     } else if (accelV4 == 4020) {
-                        inAirScore += 8;
-                        info("Vertical accel Metro +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        if (inAirScore > 1) {
+                            inAirScore += 8;
+                            info("Vertical accel Metro +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        } else {
+                            inAirScore++;
+                            info("Vertical accel Metro +1: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        }
                     } else if (accelV4 == 3332) {
-                        inAirScore += 8;
-                        info("Vertical accel Huzuni +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
-                    } else if (accelV4s > 0) {
-                        inAirScore += 2;
-                        info("Upwards accel (unnatural) +2: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        if (inAirScore > 0) {
+                            //inAirScore += 3;
+                            debug("Vertical accel Huzuni (disabled): %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        } else {
+                            debug("Ignoring vertical accel Huzuni: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        }
+                    } else if (accelV4s > 0 && lastAirAccelV != null && lastAirAccelV > 0.0) {
+                        if (preLastKnockbackTime != null && now - preLastKnockbackTime < 600) {
+                            debug("Ignoring expected upwards accel from knockback: %s", player.getName());
+                        } else if (inAirScore > 4) {
+                            inAirScore += 2;
+                            info("Upwards accel (unnatural) +2: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        } else {
+                            debug("Ignoring upwards accel: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                        }
                     } else if (jumpingCount <= 0 && (accelV4s == -752 || accelV4s == -1490 || accelV4s == -2213)) {
                         falling = true;
                         fallingCount++;
@@ -672,15 +724,15 @@ public final class HeuristicsManager extends Manager {
                     } else if (deltaV4s < 0) {
                         if (inAirScore > 0) {
                             inAirScore--;
-                            if (inAirScore > 0 || obviousFlyHacks > 1 || suspiciousFlyHacks > 1) {
-                                info("Falling -1: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                            if (inAirScore > 1 || obviousFlyHacks > 1 || suspiciousFlyHacks > 1) {
+                                debug("Falling -1: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                             } else {
                                 debug("Falling -1: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                             }
                         } else {
                             debug("Falling: %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", timeInAir, deltaV, accelV, player.getName());
                         }
-                    } else if (deltaV4s > 0 && accelV4s > 0) {
+                    } else if (deltaV4s > 0 && accelV4s > 0 && lastAirAccelV != null && lastAirAccelV > 0.0) {
                         fallingCount++;
                         falling = true;
                         if (jumpingCount > 1) {
@@ -688,8 +740,8 @@ public final class HeuristicsManager extends Manager {
                             jumping = true;
                         }
 
-                        inAirScore += 32;
-                        info("Falling but slowing down +32: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                        inAirScore += 8;
+                        info("Falling but slowing down +8: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                     } else if (deltaV4s > 0) {
                         debug("Rising: %d; %d ms; %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                     }
@@ -697,7 +749,8 @@ public final class HeuristicsManager extends Manager {
                     if (timeInAir >= 600 && inAirScore >= 24) {  // TODO: Use packet count as well as time; helps prevent lag
                         // TODO: Enderpearls might break this
                         onCaughtCheating(player, "flight");
-                    } else if (timeInAir > 1200 && (deltaV4s >= 0 || (accelV4s >= 0 && lastAirAccelV != null && lastAirAccelV >= 0))) {
+                    } else if (timeInAir > 1200 && deltaV4s >= 0 && accelV4s >= 0 && lastAirAccelV != null && lastAirAccelV >= 0) {
+                        info("In air too long: %s; %d ms", player.getName(), timeInAir);
                         onCaughtCheating(player, "flight/floating");
                     } else {
                         lastAirAccelV = accelV;
@@ -733,7 +786,7 @@ public final class HeuristicsManager extends Manager {
                 }
             } else if (obviousFlyHacks > 0) {
                 obviousFlyHacks--;
-                info("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
+                debug("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
             }
 
             if (deltaH4 == 9800) {  // Wurst
@@ -744,20 +797,21 @@ public final class HeuristicsManager extends Manager {
                 info("Hack client signature upward movement for %s +240: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaV);
             } else if (deltaV4s > 11200) {
                 // 1.1200 and 1.0192 seem to be PvP-related; knockback, maybe?  Sometimes 1.1084 instead of 1.1200.
-                suspiciousFlyHacks += 160;
+                //suspiciousFlyHacks += 160;
+                info("Ignoring moderately fast vertical movement for %s: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaV);
             } else if (deltaH4 >= 30000) {
                 suspiciousFlyHacks += 160;
                 info("Very fast horizontal movement for %s +160: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
             } else if (deltaH4 >= 12000) {
-                suspiciousFlyHacks += 60;
-                debug("Moderately fast horizontal movement for %s +60: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
+                //suspiciousFlyHacks += 60;
+                info("Moderately fast horizontal movement for %s +60: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
             } else if (deltaH4 >= 9800) {  // Wurst
                 if (deltaV4 == 0) {
-                    suspiciousFlyHacks += 80;
-                    debug("Slightly fast and suspicious horizontal movement for %s +80: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
-                } else {
                     suspiciousFlyHacks += 20;
-                    debug("Slightly fast horizontal movement for %s +20: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
+                    info("Slightly fast and suspicious horizontal movement for %s +20: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
+                } else {
+                    //suspiciousFlyHacks += 20;
+                    debug("Ignoring slightly fast horizontal movement for %s: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
                 }
             } else if (suspiciousFlyHacks > 0 && obviousFlyHacks <= 0) {
                 suspiciousFlyHacks -= 4;
@@ -1021,7 +1075,7 @@ public final class HeuristicsManager extends Manager {
             lastAirAccelGoingUp = null;
             fallingCount = 0;
             jumpingCount = 0;
-            lastLadderTime = 0;
+            lastClimbableTime = 0;
         }
 
         public void resetFlightHistory() {
