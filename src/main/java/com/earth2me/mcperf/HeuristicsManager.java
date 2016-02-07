@@ -322,7 +322,9 @@ public final class HeuristicsManager extends Manager {
 
                     case 2:  // SLOW
                         if (level >= 7) {
-                            deltaEH = deltaEH == 0.0 ? 0.0 : Double.POSITIVE_INFINITY;
+                            //deltaEH = deltaEH == 0.0 ? 0.0 : Double.POSITIVE_INFINITY;
+                            // Skip for now
+                            return;
                         } else {
                             deltaEH /= 1.0 - 0.15 * level;
                         }
@@ -1037,10 +1039,10 @@ public final class HeuristicsManager extends Manager {
                 obviousFlyHacks += 4;
                 info("Obvious flight hack (Wurst flight) for %s +4: %d", player.getName(), obviousFlyHacks);
                 strike(200, "flight:obvious Wurst", "flight");
-            } else if (deltaV4 == 3750) {  // Metro
-                obviousFlyHacks += 4;
+            } else if (deltaV4 == 3750) {  // Metro, but PvP also seems to trigger this, so no strike
+                obviousFlyHacks += 2;
                 info("Obvious flight hack (Metro flight) for %s +4: %d; %.6f", player.getName(), obviousFlyHacks, deltaV);
-                strike(25, "flight:obvious Metro", "flight");
+                //strike(25, "flight:obvious Metro", "flight");
             } else if (deltaV4 == 3749) {  // Huzuni
                 obviousFlyHacks += 4;
                 info("Obvious flight hack (Huzuni flight) for %s +4: %d; %.6f", player.getName(), obviousFlyHacks, deltaV);
@@ -1089,13 +1091,13 @@ public final class HeuristicsManager extends Manager {
                 strike(75, "speed:very fast", "speed");
             } else if (deltaEH4 >= 9800) {  // Wurst
                 if (deltaV4 == 0) {
-                    suspiciousFlyHacks += 20;
-                    info("Slightly fast and suspicious horizontal movement for %s +20: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
-                    strike(25, "speed:suspicious slightly fast horiz", "speed");
+                    //suspiciousFlyHacks += 20;
+                    debug("Slightly fast and suspicious horizontal movement for %s +0: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
+                    //strike(25, "speed:suspicious slightly fast horiz", "speed");
                 } else {
                     //suspiciousFlyHacks += 20;
                     debug("Ignoring slightly fast horizontal movement for %s: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
-                    strike(10, "speed:slightly fast horiz", "speed");
+                    //strike(10, "speed:slightly fast horiz", "speed");
                 }
             } else if (suspiciousFlyHacks > 0 && obviousFlyHacks <= 0) {
                 suspiciousFlyHacks -= 4;
@@ -1418,8 +1420,13 @@ public final class HeuristicsManager extends Manager {
                     resetAttackSpeed();
                 } else {
                     highSpeedAttacks++;
-                    info("High-speed attack %d: %d ms", highSpeedAttacks, deltaTime);
-                    strike(75, "attack speed", "attack speed");
+
+                    if (highSpeedAttacks >= 3) {
+                        info("High-speed attack %d: %s; %d ms", highSpeedAttacks, player.getName(), deltaTime);
+                        strike(50, "attack speed", "attack speed");
+                    } else {
+                        debug("High-speed attack %d: %s; %d ms", highSpeedAttacks, player.getName(), deltaTime);
+                    }
 
                     if (highSpeedAttacks >= 10) {
                         onCaughtCheating(player, "killaura/speed attack/lag");
@@ -1476,19 +1483,19 @@ public final class HeuristicsManager extends Manager {
                 missDistance = null;
             }
 
-            if (distance >= 6) {
+            if (distance >= 6.2) {
                 farHits += 4;
                 info("Very far hit +4: %d; %.6f blocks; %s", farHits, distance, player.getName());
                 strike(100, "reach:very far", "reach");
-            } else if (distance >= 5) {
+            } else if (distance >= 5.7) {  // With lag, players get up to 5.69 at times.
                 farHits += 2;
                 info("Moderately far hit +2: %d; %.6f blocks; %s", farHits, distance, player.getName());
                 strike(50, "reach:moderately far", "reach");
             }
             if (distance >= 4.2) {
-                farHits += 1;
-                info("Slightly far hit +1: %d; %.6f blocks; %s", farHits, distance, player.getName());
-                strike(10, "reach:slightly far", "reach");
+                //farHits += 1;
+                debug("Slightly far hit +0: %d; %.6f blocks; %s", farHits, distance, player.getName());
+                //strike(10, "reach:slightly far", "reach");
             } else if (farHits > 0) {
                 farHits--;
             }
