@@ -84,6 +84,7 @@ import com.earth2me.mcperf.mojang.MathHelper;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -97,6 +98,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffect;
 import org.bukkit.util.Vector;
 
 import java.lang.ref.WeakReference;
@@ -288,21 +290,59 @@ public final class HeuristicsManager extends Manager {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
+        Detector detector = getDetector(player);
+        Location from = event.getFrom();
+        Location to = event.getTo();
+
         if (!player.isFlying() && player.getGameMode() != GameMode.CREATIVE && player.getGameMode() != GameMode.SPECTATOR) {
-            Vector delta = event.getTo().toVector().subtract(event.getFrom().toVector());
-            double deltaV = delta.getY();
+            Vector delta = to.toVector().subtract(from.toVector());
             double deltaH = Math.sqrt(Math.pow(delta.getX(), 2) + Math.pow(delta.getZ(), 2));
+            double deltaV = delta.getY();
             if (player.getWalkSpeed() != 0.2) {
                 float speed = player.getWalkSpeed();
                 deltaH /= speed * 5;
             }
-            if (deltaV > 0.5 || (deltaH > 0.6 && deltaV != 0.41999998688697815)) {  // 0.412 is jump while sprinting
+
+            double deltaEH = deltaH;
+            double deltaEV = deltaV;
+
+            if (player.isInsideVehicle()) {
+                // TODO: Handle vehicles/mounts via deltaEH/deltaEV
+                //       What happens if a mount or a player in a vehicle is affected by a potion?
+                //       Do either have any effect?  Which one takes precedence?  Do they stack?
+                detector.resetMovement();
+            }
+
+            for (PotionEffect potion : player.getActivePotionEffects()) {
+                byte level = (byte) potion.getAmplifier();
+                switch (potion.getType().hashCode()) {
+                    case 1:  // SPEED
+                        deltaEH /= 1.0 + 0.20 * level;
+                        break;
+
+                    case 2:  // SLOW
+                        if (level >= 7) {
+                            deltaEH = deltaEH == 0.0 ? 0.0 : Double.POSITIVE_INFINITY;
+                        } else {
+                            deltaEH /= 1.0 - 0.15 * level;
+                        }
+                        break;
+
+                    case 8:  // JUMP
+                        deltaEV /= Math.pow(level + 4.2, 2) / 16 / 1.1025;
+                        break;
+                }
+            }
+
+            double deltaVa = Math.abs(delta.getY());
+            if (deltaVa > 0.5 || (deltaH > 0.6 && deltaV != 0.41999998688697815)) {  // 0.412 is jump while sprinting
                 debug("Movement for %s: %s; H:%.6f, V:%.6f; %s; speed %f", player.getName(), delta, deltaH, deltaV, isOnGround(player) ? "on ground" : "in air", player.getWalkSpeed());
             }
-            getDetector(player).onMove(deltaH, deltaV);
+
+            detector.onMove(deltaH, deltaV, deltaEH, deltaEV, from, event.getTo());
         } else {
             //debug("Reset due to flight/game mode: %s", player.getName());
-            getDetector(player).reset();
+            detector.reset();
         }
     }
 
@@ -380,8 +420,6 @@ public final class HeuristicsManager extends Manager {
     }
 
     public void onCaughtCheating(Player player, String reason) {
-        onPlayerDepart(player);
-
         if (!player.isOnline()) {
             return;
         }
@@ -434,15 +472,74 @@ public final class HeuristicsManager extends Manager {
         dev(message);
     }
 
-    private static boolean isClimbable(Material material) {
+    private static void addBlocks(List<Block> blocks, World world, int height, int x, int y, int z) {
+        for (int i = 0; i < height; i++) {
+            Block block = world.getBlockAt(x, y + i, z);
+            if (block != null) {
+                blocks.add(block);
+            }
+        }
+    }
+
+    // This is oversimplified because players aren't 1x2 cylinders, but it'll do for now.
+    private static List<Block> getOverlappingBlocks(Location location, int height) {
+        List<Block> blocks = new LinkedList<>();
+
+        World world = location.getWorld();
+        double xf = location.getX();
+        double yf = location.getY();
+        double zf = location.getZ();
+        int x = location.getBlockX();
+        int y = location.getBlockY();
+        int z = location.getBlockZ();
+
+        addBlocks(blocks, world, height, x, y, z);
+
+        boolean ox = (double) x != xf;
+        boolean oy = (double) y != yf && height > 0;
+        boolean oz = (double) z != zf;
+
+        if (height < 0) {
+            height = 1;
+        }
+
+        if (ox) {
+            addBlocks(blocks, world, height, x + 1, y, z);
+
+            if (oy) {
+                addBlocks(blocks, world, height, x + 1, y + 1, z);
+
+                if (oz) {
+                    addBlocks(blocks, world, height, x + 1, y + 1, z + 1);
+                }
+            }
+
+            if (oz) {
+                addBlocks(blocks, world, height, x + 1, y, z + 1);
+            }
+        }
+
+        if (oy) {
+            addBlocks(blocks, world, height, x, y + 1, z);
+
+            if (oz) {
+                addBlocks(blocks, world, height, x, y + 1, z + 1);
+            }
+        }
+
+        if (oz) {
+            addBlocks(blocks, world, height, x, y, z + 1);
+        }
+
+        return blocks;
+    }
+
+    private static boolean isLiquid(Material material) {
         switch (material) {
-            case LADDER:
             case WATER:
             case STATIONARY_WATER:
             case LAVA:
             case STATIONARY_LAVA:
-            case VINE:
-            case WEB:
                 return true;
 
             default:
@@ -476,7 +573,7 @@ public final class HeuristicsManager extends Manager {
         private int suspiciousFlyHacks = 0;
         private Long firstInAir = null;
         private int inAirScore = 0;
-        private double lastAirDeltaV = 0;
+        private double lastAirDeltaEV = 0;
         private Double lastAirAccelV = null;
         private Boolean lastAirAccelGoingUp = null;
         private int jumpingCount = 0;
@@ -486,6 +583,13 @@ public final class HeuristicsManager extends Manager {
         private final long knockbackTimeout = 500;
         private final long consecutiveKnockbackTimeout = 300;
         private long lastClimbableTime = 0;
+        private int strikes = 0;
+        private long lastStrikeTime = 0;
+        private Set<String> strikeReasonsDebug = new HashSet<>();
+        private Set<String> strikeReasonsPublic = new HashSet<>();
+        private Integer lastDeltaV4s = null;
+        private int yesCheatPlusCount = 0;
+        private int waterWalkCount = 0;
 
         public Detector(Player player) {
             this.player = new WeakReference<>(player);
@@ -563,17 +667,127 @@ public final class HeuristicsManager extends Manager {
             }
         }
 
-        public void onMove(double deltaH, double deltaV) {
+
+        private void strike(int count, String debugReason, String publicReason) {
+            strike(count, debugReason, publicReason, false);
+        }
+
+        private void strike(int count, String debugReason, String publicReason, boolean skipReset) {
+            Player player = getPlayer();
+            if (player == null) {
+                return;
+            }
+
+            long now = System.currentTimeMillis();
+
+            if (!skipReset) {
+                long sinceLast = now - lastStrikeTime;
+
+                if (strikes > 0 && lastStrikeTime > 0 && sinceLast > 26_000) {
+                    strikes = 0;
+                    strikeReasonsDebug.clear();
+                    strikeReasonsPublic.clear();
+                    debug("Strikes reset: %d; %s", sinceLast, player.getName());
+                }
+            }
+
+            lastStrikeTime = now;
+            strikeReasonsDebug.add(debugReason);
+            strikeReasonsPublic.add(publicReason);
+
+            if (count > 0) {
+                strikes += count;
+                info("STRIKE +%d: %d; %s; %s", count, strikes, debugReason, player.getName());
+            } else {
+                debug("Null strike +%d: %d; %s; %s", count, strikes, debugReason, player.getName());
+            }
+
+            if (strikes >= 1_000) {
+                info("STRUCK OUT: %s for %s", player.getName(), String.join(", ", strikeReasonsDebug));
+                onCaughtCheating(getPlayer(), "hack client: " + String.join(", ", strikeReasonsPublic));
+            }
+        }
+
+        @SuppressWarnings("ConstantConditions")  // TODO: Break method into multiple components
+        public void onMove(double deltaH, double deltaV, double deltaEH, double deltaEV, Location from, Location to) {
             Player player = getPlayerIfEnabled();
             if (player == null) {
                 return;
             }
 
-            int deltaV4s = (int) (deltaV * 10000);
-            int deltaV4 = Math.abs(deltaV4s);
-            int deltaH4 = (int) (deltaH * 10000);
-            boolean inAir = !isOnGround(player) && player.getLocation().getY() >= 0.0;
+            List<Block> blocks = getOverlappingBlocks(from, 2);
+            List<Block> blocksBelow = getOverlappingBlocks(from.clone().subtract(0, 1, 0), 0);
+            World world = from.getWorld();
+            int x = from.getBlockX();
+            int y = from.getBlockY();
+            int z = from.getBlockZ();
+
+            boolean jumping = false;
+            boolean falling = false;
+            boolean climbing = false;
+            boolean swimming = false;
+            boolean inAir = !isOnGround(player) && y >= 0;
+
             long now = System.currentTimeMillis();
+
+            Block blockBelow = world.getBlockAt(x, y - 1, z);
+            Material below = blockBelow == null ? Material.AIR : blockBelow.getType();
+            if (below == null) {
+                below = Material.AIR;
+            }
+
+            long climbableTimeDelta = now - lastClimbableTime;
+            for (Block block : blocks) {
+                switch (block.getType()) {
+                    case LADDER:
+                    case VINE:
+                        climbing = true;
+                        break;
+
+
+                    case LAVA:
+                    case STATIONARY_LAVA:
+                        climbing = true;
+                        swimming = true;
+                        // Conservative guess
+                        deltaEH *= 0.65;
+                        deltaEV *= 0.65;
+                        break;
+
+                    case WATER:
+                    case STATIONARY_WATER:
+                        climbing = true;
+                        swimming = true;
+                        // Conservative guess
+                        deltaEH *= 0.85;
+                        deltaEV *= 0.85;
+                        break;
+
+                    case WEB:
+                        climbing = true;  // TODO: Eliminate this by ignoring time in air
+                        // This is approximate, but should be close.
+                        deltaEH *= 0.15;
+                        deltaEV *= 0.15;
+                        break;
+                }
+            }
+            if (climbing) {
+                inAir = false;
+                resetFlight();
+                lastClimbableTime = now;
+                debug("On climbable: %s", player.getName());
+            } else if (climbableTimeDelta <= 800) {
+                inAir = false;
+                resetFlight();
+                debug("Recently on climbable: %s", player.getName());
+            }
+
+            int deltaV4s = (int) (deltaV * 10000);
+            int deltaEV4s = (int) (deltaEV * 10000);
+            int deltaV4 = Math.abs(deltaV4s);
+            int deltaEV4 = Math.abs(deltaEV4s);
+            int deltaH4 = (int) (deltaH * 10000);
+            int deltaEH4 = Math.max(0, (int) (deltaEH * 10000));
             Long preLastKnockbackTime = lastKnockbackTime;
 
             if (lastKnockbackTime != null) {
@@ -604,54 +818,57 @@ public final class HeuristicsManager extends Manager {
                 return;
             }
 
-            boolean jumping = false;
-            boolean falling = false;
+            if (lastDeltaV4s != null && deltaV4s != 0) {  // deltaV4 == 1010 for flight
+                String type = deltaV4 == 1010 ? "flight" : "speed";
 
-            Location location = player.getLocation();
-            World world = location.getWorld();
-            long climbableTimeDelta = now - lastClimbableTime;
-            boolean climbing = false;
-            int x = location.getBlockX();
-            int y = location.getBlockY();
-            int z = location.getBlockZ();
-            for (int ix = x - 1; ix <= x + 1; ix++) {
-                for (int iz = z - 1; iz <= z + 1; iz++) {
-                    for (int iy = y; iy <= y + 1; iy++) {
-                        if (isClimbable(world.getBlockAt(ix, iy, iz).getType())) {
-                            climbing = true;
-                            break;
-                        }
-                    }
+                if (deltaV4s * -1 == lastDeltaV4s) {
+                    yesCheatPlusCount++;
+                    info("Wurst YesCheat+ %s +1: %d; %.6f; %s", type, yesCheatPlusCount, deltaV, player.getName());
+                    strike(100, type + ":Wurst YesCheat+", type);
+                }
+
+                if (yesCheatPlusCount >= 5) {  // Seems to happen exactly 7 times for flight, plus initial
+                    onCaughtCheating(player, type + " w/NCP evasion");
+                }
+            } else {
+                yesCheatPlusCount = 0;
+                if (yesCheatPlusCount > 0) {
+                    debug("Reset Wurst YesCheat+: %d; %.6f; %s", yesCheatPlusCount, deltaV, player.getName());
                 }
             }
-            if (climbing) {
-                inAir = false;
-                resetFlight();
-                lastClimbableTime = now;
-                debug("On climbable: %s", player.getName());
-            } else if (climbableTimeDelta <= 800) {
-                inAir = false;
-                resetFlight();
-                debug("Recently on climbable: %s", player.getName());
-            }
+
+            boolean overWater = !swimming && !climbing && isLiquid(below) && blocksBelow.stream().map(Block::getType).allMatch(HeuristicsManager::isLiquid);
+            //if (!overWater) {
+            //    info("@@@ %d, %.6f; %s", y, from.getY(), String.join(" ", (Iterable<String>) blocksBelow.stream().map(Block::getType).map(Material::name)::iterator));
+            //}
 
             if (inAir) {
                 if (firstInAir == null) {
+                    if (overWater) {
+                        info("Jumping on water surface: %s", player.getName());
+                        strike(250, "water walk:cold jump", "water walk");
+                    }
+
                     firstInAir = now;
                     inAirScore = 1;
-                    lastAirDeltaV = deltaV;
+                    lastAirDeltaEV = deltaV;
                     lastAirAccelV = null;
                     lastAirAccelGoingUp = null;
-                    debug("Entered airspace: %s", player.getName());
+                    debug("Entered airspace: %s; %s", player.getName(), overWater ? "over water" : "not over water");
                 } else {
                     final int MAX_FALLING_COUNT = 4;
                     final int NORMAL_JUMPING_COUNT = 10;  // Often only 9
 
-                    double accelV = deltaV - lastAirDeltaV;
+                    double accelV = deltaEV - lastAirDeltaEV;
                     int accelV4s = (int) (accelV * 10000);
                     @SuppressWarnings("unused")
                     int accelV4 = Math.abs(accelV4s);
                     long timeInAir = now - firstInAir;
+
+                    if (overWater && accelV > 0 && climbableTimeDelta < 200) {
+                        info("Skipping across water surface: %s", player.getName());
+                        strike(250, "water walk:successive jump", "water walk");
+                    }
 
                     if (lastAirAccelV != null) {
                         boolean airAccelGoingUp = accelV > lastAirAccelV;
@@ -676,11 +893,23 @@ public final class HeuristicsManager extends Manager {
                         if (accelV == 0.0 && lastAirAccelV != null && lastAirAccelV == 0.0) {
                             inAirScore += 8;
                             info("In air, no vertical velocity +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                            strike(200, "flight:no vert velocity", "flight");
+                        }
+                    } else if (accelV4 == 0 && deltaV4s < 0 && deltaV4 < 1_0000) {  // Wurst glides at -0.1250 blocks/sec, 0 blocks/sec^2
+                        if (deltaV4s == -1250) {
+                            inAirScore += 16;
+                            info("Gliding down at Wurst speed +16: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                            strike(200, "glide:Wurst", "glide");
+                        } else {
+                            inAirScore += 8;
+                            info("Gliding down +8: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                            strike(100, "glide", "glide");
                         }
                     } else if (accelV4 == 4020) {
                         if (inAirScore > 1) {
                             inAirScore += 8;
                             info("Vertical accel Metro +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                            strike(0, "flight:vert accel metro", "flight");
                         } else {
                             inAirScore++;
                             info("Vertical accel Metro +1: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
@@ -698,6 +927,7 @@ public final class HeuristicsManager extends Manager {
                         } else if (inAirScore > 4) {
                             inAirScore += 2;
                             info("Upwards accel (unnatural) +2: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                            strike(0, "flight:unnatural upwards accel", "flight");
                         } else {
                             debug("Ignoring upwards accel: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
                         }
@@ -742,17 +972,20 @@ public final class HeuristicsManager extends Manager {
 
                         inAirScore += 8;
                         info("Falling but slowing down +8: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                        strike(50, "flight:decel on fall", "flight");
                     } else if (deltaV4s > 0) {
                         debug("Rising: %d; %d ms; %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                     }
 
                     if (timeInAir >= 600 && inAirScore >= 24) {  // TODO: Use packet count as well as time; helps prevent lag
-                        // TODO: Enderpearls might break this
                         onCaughtCheating(player, "flight");
-                    } else if (timeInAir > 1200 && deltaV4s >= 0 && accelV4s >= 0 && lastAirAccelV != null && lastAirAccelV >= 0) {
+                    } else if (timeInAir > 1_200 && deltaV4s >= 0 && accelV4s >= 0 && lastAirAccelV != null && lastAirAccelV >= 0) {
                         info("In air too long: %s; %d ms", player.getName(), timeInAir);
                         onCaughtCheating(player, "flight/floating");
                     } else {
+                        if (inAirScore >= 2) {
+                            strike(0, "flight:inAirScore", "flight", timeInAir >= 4_000);
+                        }
                         lastAirAccelV = accelV;
                     }
                 }
@@ -768,22 +1001,62 @@ public final class HeuristicsManager extends Manager {
                 jumpingCount = 0;
             }
 
-            if (deltaH == 0 && (deltaV == 1 || deltaV == -1)) {  // Wurst
+            if (!inAir && overWater && deltaV4 == 0 && lastDeltaV4s != null && lastDeltaV4s == 0 && (double) y == from.getY()) {
+                if (waterWalkCount++ > 1) {
+                    info("Walking on water +1: %d; %s", waterWalkCount, player.getName());
+                    strike(250, "water walk:float", "water walk");
+                }
+            } else if (waterWalkCount > 0) {
+                waterWalkCount = 0;
+            }
+
+            int fracV4s = deltaV4s % 1_0000;
+            if (deltaH4 < 200 && deltaV4 >= 2_0000 && (fracV4s == 0 || fracV4s == -1142 || fracV4s == 8857)) {
+                int step = deltaV > 0 ? 1 : -1;
+                int max = to.getBlockY();
+                int start = y + step;
+                for (int iy = start; step > 0 ? iy < max : iy > max; iy += step) {
+                    Block block = world.getBlockAt(x, iy, z);
+                    if (block == null) {
+                        continue;
+                    }
+
+                    Material material = block.getType();
+                    if (material == null) {
+                        continue;
+                    }
+
+                    if (material.isSolid()) {
+                        info("NO-CLIP: %s; H:%.6f V:%.6f; (%s, %d, %d, %d); %s", player.getName(), deltaH, deltaV, world.getName(), x, iy, z, material.name());
+                        onCaughtCheating(player, "no-clip through " + material.name().toLowerCase().replace('_', ' '));
+                    }
+                }
+            }
+
+            if (deltaH4 == 0 && deltaV4 == 1_0000) {  // Wurst
                 obviousFlyHacks += 4;
                 info("Obvious flight hack (Wurst flight) for %s +4: %d", player.getName(), obviousFlyHacks);
+                strike(200, "flight:obvious Wurst", "flight");
             } else if (deltaV4 == 3750) {  // Metro
                 obviousFlyHacks += 4;
                 info("Obvious flight hack (Metro flight) for %s +4: %d; %.6f", player.getName(), obviousFlyHacks, deltaV);
+                strike(25, "flight:obvious Metro", "flight");
             } else if (deltaV4 == 3749) {  // Huzuni
                 obviousFlyHacks += 4;
                 info("Obvious flight hack (Huzuni flight) for %s +4: %d; %.6f", player.getName(), obviousFlyHacks, deltaV);
+                strike(25, "flight:obvious Huzuni", "flight");
             } else if (deltaH4 == 9183 || deltaH4 == 10014) {  // Wurst speed hacks
                 obviousFlyHacks += 2;
                 info("Obvious speed hack (Wurst speed) for %s +1: %d; %.6f", player.getName(), obviousFlyHacks, deltaH);
-            } else if (deltaV4 > 5000 || (deltaH4 > 6000 && deltaV4 != 4199 && deltaV4 != 4200)) {  // 0.42 is jump while sprinting
+                strike(25, "speed:obvious Wurst", "speed");
+            } else if (deltaEV4s > 7200) {
+                info("Suspicious vertical movement; not decrementing fly hacks: %s; EH: %.6f; EV: %.6f", player.getName(), deltaEH, deltaEV);
+                strike(25, "flight:suspicious", "flight");
+            } else if (deltaEH4 > 6000 && deltaEV4 != 4199 && deltaEV4 != 4200) {  // 0.42 is jump while sprinting
                 if (obviousFlyHacks > 0) {
-                    info("Suspicious movement amount; not decrementing fly hacks: %s; H: %.6f; V: %.6f", player.getName(), deltaH, deltaV);
+                    info("Suspicious horizontal movement; not decrementing fly hacks: %s; EH: %.6f; EV: %.6f", player.getName(), deltaEH, deltaEV);
                 }
+                strike(0, "speed:suspicious", "speed");
             } else if (obviousFlyHacks > 0) {
                 obviousFlyHacks--;
                 debug("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
@@ -791,27 +1064,38 @@ public final class HeuristicsManager extends Manager {
 
             if (deltaH4 == 9800) {  // Wurst
                 suspiciousFlyHacks += 160;
-                info("Suspicious flight (Wurst flight) for %s +160: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaV);
-            } else if (deltaV4 == 10100) {  // Not sure which client this is
+                info("Suspicious horizontal speed (Wurst speed) for %s +160: %d; V: %.6f", player.getName(), suspiciousFlyHacks, deltaV);
+                strike(200, "speed:suspicious", "speed");
+            } else if (deltaV4 == 1_0100) {  // Wurst with YesCheat+ enabled
                 suspiciousFlyHacks += 240;
-                info("Hack client signature upward movement for %s +240: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaV);
-            } else if (deltaV4s > 11200) {
+                info("Wurst YesCheat+ upward movement for %s +240: %d; V: %.6f", player.getName(), suspiciousFlyHacks, deltaV);
+                strike(100, "flight:suspicious Huzuni", "flight");
+            } else if (deltaEV4s >= 2_0000) {
+                suspiciousFlyHacks += 240;
+                info("Very fast upwards movement for %s: %d; EV: %.6f", player.getName(), suspiciousFlyHacks, deltaEV);
+                strike(200, "flight:very fast", "flight");
+            } else if (deltaEV4s > 1_1200) {
                 // 1.1200 and 1.0192 seem to be PvP-related; knockback, maybe?  Sometimes 1.1084 instead of 1.1200.
-                //suspiciousFlyHacks += 160;
-                info("Ignoring moderately fast vertical movement for %s: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaV);
-            } else if (deltaH4 >= 30000) {
+                suspiciousFlyHacks += 80;
+                info("Moderately fast upwards movement for %s: %d; EV: %.6f", player.getName(), suspiciousFlyHacks, deltaEV);
+                strike(25, "flight:moderately fast", "flight");
+            } else if (deltaEH4 >= 3_0000) {
                 suspiciousFlyHacks += 160;
-                info("Very fast horizontal movement for %s +160: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
-            } else if (deltaH4 >= 12000) {
-                //suspiciousFlyHacks += 60;
-                info("Moderately fast horizontal movement for %s +60: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
-            } else if (deltaH4 >= 9800) {  // Wurst
+                info("Very fast horizontal movement for %s +160: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
+                strike(100, "flight:very fast", "flight");
+            } else if (deltaEH4 >= 1_2000) {
+                suspiciousFlyHacks += 120;
+                info("Moderately fast horizontal movement for %s +120: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
+                strike(75, "speed:very fast", "speed");
+            } else if (deltaEH4 >= 9800) {  // Wurst
                 if (deltaV4 == 0) {
                     suspiciousFlyHacks += 20;
-                    info("Slightly fast and suspicious horizontal movement for %s +20: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
+                    info("Slightly fast and suspicious horizontal movement for %s +20: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
+                    strike(25, "speed:suspicious slightly fast horiz", "speed");
                 } else {
                     //suspiciousFlyHacks += 20;
                     debug("Ignoring slightly fast horizontal movement for %s: %d; %.6f", player.getName(), suspiciousFlyHacks, deltaH);
+                    strike(10, "speed:slightly fast horiz", "speed");
                 }
             } else if (suspiciousFlyHacks > 0 && obviousFlyHacks <= 0) {
                 suspiciousFlyHacks -= 4;
@@ -824,6 +1108,8 @@ public final class HeuristicsManager extends Manager {
             if (suspiciousFlyHacks >= 640) {
                 onCaughtCheating(player, "fly/speed hacks");
             }
+
+            lastDeltaV4s = deltaV4s;
         }
 
         public void onKilled(@SuppressWarnings("UnusedParameters") Player killer) {
@@ -1070,12 +1356,11 @@ public final class HeuristicsManager extends Manager {
         public void resetFlight() {
             firstInAir = null;
             inAirScore = 0;
-            lastAirDeltaV = 0;
+            lastAirDeltaEV = 0;
             lastAirAccelV = null;
             lastAirAccelGoingUp = null;
             fallingCount = 0;
             jumpingCount = 0;
-            lastClimbableTime = 0;
         }
 
         public void resetFlightHistory() {
@@ -1085,15 +1370,31 @@ public final class HeuristicsManager extends Manager {
             obviousFlyHacks = 0;
         }
 
+        public void resetMovement() {
+            resetFlightHistory();
+
+            lastDeltaV4s = null;
+            yesCheatPlusCount = 0;
+            lastClimbableTime = 0;
+        }
+
         public void resetKnockback() {
             antiKnockbackCount = 0;
             lastKnockbackTime = null;
         }
 
+        public void resetStrikes() {
+            strikes = 0;
+            lastStrikeTime = 0;
+            strikeReasonsDebug.clear();
+            strikeReasonsPublic.clear();
+        }
+
         public void reset() {
             resetAttack();
-            resetFlightHistory();
+            resetMovement();
             resetKnockback();
+            resetStrikes();
         }
 
         public void onAttackSpeedTainted() {
@@ -1117,7 +1418,8 @@ public final class HeuristicsManager extends Manager {
                     resetAttackSpeed();
                 } else {
                     highSpeedAttacks++;
-                    debug("High-speed attack %d: %d ms", highSpeedAttacks, deltaTime);
+                    info("High-speed attack %d: %d ms", highSpeedAttacks, deltaTime);
+                    strike(75, "attack speed", "attack speed");
 
                     if (highSpeedAttacks >= 10) {
                         onCaughtCheating(player, "killaura/speed attack/lag");
@@ -1176,11 +1478,17 @@ public final class HeuristicsManager extends Manager {
 
             if (distance >= 6) {
                 farHits += 4;
+                info("Very far hit +4: %d; %.6f blocks; %s", farHits, distance, player.getName());
+                strike(100, "reach:very far", "reach");
             } else if (distance >= 5) {
                 farHits += 2;
+                info("Moderately far hit +2: %d; %.6f blocks; %s", farHits, distance, player.getName());
+                strike(50, "reach:moderately far", "reach");
             }
             if (distance >= 4.2) {
                 farHits += 1;
+                info("Slightly far hit +1: %d; %.6f blocks; %s", farHits, distance, player.getName());
+                strike(10, "reach:slightly far", "reach");
             } else if (farHits > 0) {
                 farHits--;
             }
