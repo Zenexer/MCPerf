@@ -349,6 +349,14 @@ public final class HeuristicsManager extends Manager {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        Player player = event.getPlayer();
+        Detector detector = getDetector(player);
+
+        detector.onTeleport();
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.isCancelled()) {
             return;  // Just to be safe
@@ -484,24 +492,36 @@ public final class HeuristicsManager extends Manager {
     }
 
     // This is oversimplified because players aren't 1x2 cylinders, but it'll do for now.
-    private static List<Block> getOverlappingBlocks(Location location, int height) {
+    private static List<Block> getOverlappingBlocks(Location location, int height, boolean wide) {
         List<Block> blocks = new LinkedList<>();
 
+        boolean isSneaking = false;  // TODO: Minecraft 1.9
+        @SuppressWarnings("ConstantConditions")
+        double playerHeight = isSneaking ? 1.65 : 1.85;
+        double playerWidth = 0.6;
+
         World world = location.getWorld();
-        double xf = location.getX();
+        double xf = location.getX() - playerWidth / 2;
         double yf = location.getY();
-        double zf = location.getZ();
-        int x = location.getBlockX();
-        int y = location.getBlockY();
-        int z = location.getBlockZ();
+        double zf = location.getZ() - playerWidth / 2;
+        int x = (int) Math.floor(xf);
+        int y = (int) Math.floor(yf);
+        int z = (int) Math.floor(zf);
 
         addBlocks(blocks, world, height, x, y, z);
 
-        boolean ox = (double) x != xf;
-        boolean oy = (double) y != yf && height > 0;
-        boolean oz = (double) z != zf;
+        boolean ox;
+        boolean oy;
+        boolean oz;
+        if (wide) {
+            ox = oy = oz = true;
+        } else {
+            ox = (double) x != Math.floor(xf + playerWidth);
+            oy = (double) y != Math.floor(yf + playerHeight) && height > 0;
+            oz = (double) z != Math.floor(zf + playerWidth);
+        }
 
-        if (height < 0) {
+        if (height <= 0) {
             height = 1;
         }
 
@@ -592,9 +612,14 @@ public final class HeuristicsManager extends Manager {
         private Integer lastDeltaV4s = null;
         private int yesCheatPlusCount = 0;
         private int waterWalkCount = 0;
+        private boolean teleported = false;
 
         public Detector(Player player) {
             this.player = new WeakReference<>(player);
+        }
+
+        public void onTeleport() {
+            teleported = true;
         }
 
         public void onKnockback(Entity damager) {
@@ -717,8 +742,8 @@ public final class HeuristicsManager extends Manager {
                 return;
             }
 
-            List<Block> blocks = getOverlappingBlocks(from, 2);
-            List<Block> blocksBelow = getOverlappingBlocks(from.clone().subtract(0, 1, 0), 0);
+            List<Block> blocks = getOverlappingBlocks(from, 2, false);
+            List<Block> blocksBelow = getOverlappingBlocks(from.clone().subtract(0, 1, 0), 0, true);
             World world = from.getWorld();
             int x = from.getBlockX();
             int y = from.getBlockY();
@@ -841,7 +866,7 @@ public final class HeuristicsManager extends Manager {
 
             boolean overWater = !swimming && !climbing && isLiquid(below) && blocksBelow.stream().map(Block::getType).allMatch(HeuristicsManager::isLiquid);
             //if (!overWater) {
-            //    info("@@@ %d, %.6f; %s", y, from.getY(), String.join(" ", (Iterable<String>) blocksBelow.stream().map(Block::getType).map(Material::name)::iterator));
+            //    debug("@@@ %d, %.6f; %s", y, from.getY(), String.join(" ", (Iterable<String>) blocksBelow.stream().map(Block::getType).map(Material::name)::iterator));
             //}
 
             if (inAir) {
@@ -902,6 +927,10 @@ public final class HeuristicsManager extends Manager {
                             inAirScore += 16;
                             info("Gliding down at Wurst speed +16: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                             strike(200, "glide:Wurst", "glide");
+                        } else if (deltaV4s == -980) {
+                            info("Ignoring glide due to key velocity: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                        } else if (teleported) {
+                            info("Ignoring glide due to recent teleport: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                         } else {
                             inAirScore += 8;
                             info("Gliding down +8: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
@@ -1088,7 +1117,7 @@ public final class HeuristicsManager extends Manager {
             } else if (deltaEH4 >= 1_2000) {
                 suspiciousFlyHacks += 120;
                 info("Moderately fast horizontal movement for %s +120: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
-                strike(75, "speed:very fast", "speed");
+                strike(25, "speed:moderately fast", "speed");
             } else if (deltaEH4 >= 9800) {  // Wurst
                 if (deltaV4 == 0) {
                     //suspiciousFlyHacks += 20;
@@ -1356,6 +1385,8 @@ public final class HeuristicsManager extends Manager {
         }
 
         public void resetFlight() {
+            teleported = false;
+
             firstInAir = null;
             inAirScore = 0;
             lastAirDeltaEV = 0;

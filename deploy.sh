@@ -2,7 +2,7 @@
 set -e
 
 jar=MCPerf.jar
-server=mc-0.internal.cowcraft.net
+server=root@mc-0.internal.cowcraft.net
 
 cd jar || exit $?
 
@@ -23,6 +23,6 @@ for i in "$@"; do
 			;;
 	esac
 	
-	rsync --rsync-path='sudo rsync' "$jar" "$server:$dest" || x=$?
+	rsync "$jar" "$server:$dest" || x=$?
 done
 exit $x
