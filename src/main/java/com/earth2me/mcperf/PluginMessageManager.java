@@ -34,7 +34,12 @@ public class PluginMessageManager extends Manager implements PluginMessageListen
         super(server, logger, plugin);
     }
 
-    public void register() {
+    @Override
+    public void onInit() {
+        if (!isEnabled()) {
+            return;
+        }
+
         fmls = new WeakHashMap<>();
 
         registerDuplex("FML");
@@ -44,7 +49,8 @@ public class PluginMessageManager extends Manager implements PluginMessageListen
         getServer().getPluginCommand("chans").setExecutor(this::onChansCommand);
     }
 
-    public void unregister() {
+    @Override
+    public void onDeinit() {
         Bukkit.getMessenger().unregisterIncomingPluginChannel(getPlugin());
         Bukkit.getMessenger().unregisterOutgoingPluginChannel(getPlugin());
 

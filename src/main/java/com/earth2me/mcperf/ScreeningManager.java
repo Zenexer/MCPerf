@@ -51,20 +51,16 @@ public final class ScreeningManager extends Manager {
     }
 
     @Override
-    public synchronized void setEnabled(boolean enabled) {
-        super.setEnabled(enabled);
-
-        if (!enabled) {
-            // This could potentially become a threading issue due to GC/async events; not much
-            // we can do about it, though.
-            try {
-                info.values().forEach(Info::clear);
-            } catch (ConcurrentModificationException e) {
-                // Yeah... that happened.  Edge case, one or two people get kicked.
-                getLogger().log(Level.WARNING, "Couldn't clear all kill tasks due to concurrency issue: " + e.getMessage(), e);
-            }
-            // Don't clear it in case users respond to tests; we want to block those messages.
+    public synchronized void onDeinit() {
+        // This could potentially become a threading issue due to GC/async events; not much
+        // we can do about it, though.
+        try {
+            info.values().forEach(Info::clear);
+        } catch (ConcurrentModificationException e) {
+            // Yeah... that happened.  Edge case, one or two people get kicked.
+            getLogger().log(Level.WARNING, "Couldn't clear all kill tasks due to concurrency issue: " + e.getMessage(), e);
         }
+        // Don't clear it in case users respond to tests; we want to block those messages.
     }
 
     private Info getInfo(Player player) {

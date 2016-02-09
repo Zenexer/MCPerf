@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ConfigHandler {
@@ -123,6 +124,12 @@ public class ConfigHandler {
                         list = config.getMapList(key);
                         break;
 
+                    case "java.util.UUID": {
+                        List<String> strings = config.getStringList(key);
+                        list = strings.stream().map(UUID::fromString).collect(Collectors.toList());
+                        break;
+                    }
+
                     default:
                         throw new RuntimeException(String.format("Unexpected setting generic parameter type %s derived from %s for config setting %s", generic, fullType, key));
                 }
@@ -153,6 +160,12 @@ public class ConfigHandler {
             case "org.bukkit.util.Vector":
                 value = config.getVector(key);
                 break;
+
+            case "java.util.UUID": {
+                String uuid = config.getString(key);
+                value = uuid == null ? null : UUID.fromString(uuid);
+                break;
+            }
 
             default:
                 throw new RuntimeException(String.format("Unexpected setting type: %s derived from %s for config setting %s", type, fullType, key));

@@ -34,6 +34,13 @@
 		</repository-->
 	</repositories>
 
+	<distributionManagement>
+		<repository>
+			<id>ssh-cowcraft</id>
+			<url>scp://mc-0.internal.cowcraft.net/repo/mvn</url>
+		</repository>
+	</distributionManagement>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.spigotmc</groupId>
@@ -64,11 +71,19 @@
 			</resource>
 		</resources>
 
+		<extensions>
+			<extension>
+				<groupId>org.apache.maven.wagon</groupId>
+				<artifactId>wagon-ssh</artifactId>
+				<version>2.10</version>
+			</extension>
+		</extensions>
+
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.2</version>
+				<version>3.5</version>
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
@@ -78,7 +93,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.5</version>
+				<version>2.6</version>
 				<configuration>
 					<outputDirectory>${basedir}/jar</outputDirectory>
 				</configuration>
@@ -86,10 +101,43 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>
-				<version>2.5</version>
+				<version>2.7</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>wagon-maven-plugin</artifactId>
+				<version>1.0</version>
+				<executions>
+					<execution>
+						<id>default-deploy</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>upload</goal>
+						</goals>
+						<configuration>
+							<fromDir>jar</fromDir>
+							<includes>MCPerf.jar</includes>
+							<url>scp://mc-0.internal.cowcraft.net/</url>
+							<toDir>repo/dev</toDir>
+						</configuration>
+					</execution>
+					<execution>
+						<id>default-cli</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>upload</goal>
+						</goals>
+						<configuration>
+							<fromDir>jar</fromDir>
+							<includes>MCPerf.jar</includes>
+							<url>scp://mc-0.internal.cowcraft.net/</url>
+							<toDir>repo/prod</toDir>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

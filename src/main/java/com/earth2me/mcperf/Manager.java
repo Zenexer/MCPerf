@@ -1,9 +1,9 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.config.ConfigSettingSetter;
 import com.earth2me.mcperf.config.Configurable;
 import lombok.Getter;
-import lombok.Setter;
 import org.bukkit.Server;
 import org.bukkit.event.Listener;
 
@@ -11,7 +11,6 @@ import java.util.logging.Logger;
 
 public abstract class Manager implements Listener, Configurable {
     @Getter
-    @Setter
     @ConfigSetting
     private boolean enabled;
     @Getter
@@ -23,6 +22,7 @@ public abstract class Manager implements Listener, Configurable {
     @Getter
     private final PluginCommandSender commandSender;
     private String configPathCache;
+    private boolean initializedOnce = false;
 
     public Manager(Server server, Logger logger, MCPerfPlugin plugin) {
         this(server, logger, plugin, true);
@@ -34,6 +34,73 @@ public abstract class Manager implements Listener, Configurable {
         this.plugin = plugin;
         this.enabled = enabled;
         this.commandSender = new PluginCommandSender(server, getClass().getSimpleName());
+    }
+
+    public String getId() {
+        return getClass().getSimpleName();
+    }
+
+    final void init() {
+        initializedOnce = true;
+
+        if (!enabled) {
+            return;
+        }
+
+        getLogger().info("Initializing " + getId());
+        onInit();
+    }
+
+    protected void onInit() {
+    }
+
+    private void deinit(boolean log) {
+        if (!enabled || !initializedOnce) {
+            return;
+        }
+
+        if (log) {
+            getLogger().info("De-initializing " + getId());
+        }
+
+        onDeinit();
+    }
+
+    protected void onDeinit() {
+    }
+
+    @ConfigSettingSetter
+    public final void setEnabled(boolean value) {
+        if (value) {
+            enable();
+        } else {
+            disable();
+        }
+    }
+
+    // Keep in mind this won't be called initially if enabled = true is passed to constructor.
+    public void enable() {
+        if (enabled) {
+            return;
+        }
+
+        getLogger().info("Enabling " + getId());
+        enabled = true;
+
+        if (initializedOnce) {
+            init();
+        }
+    }
+
+    public void disable() {
+        if (!enabled) {
+            return;
+        }
+
+        getLogger().info("Disabling " + getId());
+
+        deinit(false);
+        enabled = false;
     }
 
     public void dispatchCommand(String command) {

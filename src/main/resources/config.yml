@@ -44,6 +44,7 @@ screeningManager:
 heuristicsManager:
   enabled: false
   debugEnabled: false
+  verboseDebugEnabled: false
   commands:
     # %1$s = username
     # %2$s = reason
@@ -53,3 +54,7 @@ heuristicsManager:
 blacklistManager:
   enabled: false
   blocks: []
+securityManager:
+  bannedNames: []
+  bannedIPs: []
+  bannedUUIDs: []

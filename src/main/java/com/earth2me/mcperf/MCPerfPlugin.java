@@ -98,21 +98,20 @@ public class MCPerfPlugin extends JavaPlugin {
                 heuristicsManager = new HeuristicsManager(getServer(), getLogger(), this),
                 blacklistManager = new BlacklistManager(getServer(), getLogger(), this),
         }));
-        pluginMessageManager.register();
 
-        // Listeners must already be instantiated.
         loadConfiguration();
+
+        managers.forEach(Manager::init);
 
         super.onEnable();
     }
 
     @Override
     public void onDisable() {
+        managers.forEach(Manager::disable);
         managers.clear();
 
-        if (pluginMessageManager != null) {
-            pluginMessageManager.unregister();
-        }
+        getServer().getScheduler().cancelTasks(this);
 
         super.onDisable();
     }
