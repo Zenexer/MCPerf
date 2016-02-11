@@ -89,6 +89,8 @@ public class PluginMessageManager extends Manager implements PluginMessageListen
         }
 
         Stream<Player> players;
+        // TODO: We can probably extract this bit, but there are a lot of local variables.
+        //noinspection Duplicates
         if (args.length == 1 && "*".equals(args[0])) {
             if (!hasAllPermissions && !sender.hasPermission("mcperf.chans.all")) {
                 return Util.denyPermission(sender);
@@ -160,7 +162,7 @@ public class PluginMessageManager extends Manager implements PluginMessageListen
                 break;
 
             default:
-                sendAlert(alert);
+                sendNotice(alert);
                 break;
         }
     }

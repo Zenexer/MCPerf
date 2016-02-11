@@ -3,6 +3,7 @@ package com.earth2me.mcperf;
 import com.earth2me.mcperf.config.ConfigHandler;
 import com.earth2me.mcperf.validity.ValidityConfiguration;
 import lombok.Getter;
+import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -12,6 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.util.*;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class MCPerfPlugin extends JavaPlugin {
     @Getter
@@ -32,6 +34,8 @@ public class MCPerfPlugin extends JavaPlugin {
     private HeuristicsManager heuristicsManager;
     @Getter
     private BlacklistManager blacklistManager;
+    @Getter
+    private ProxyManager proxyManager;
 
     // Thought: Should this be a set?  Would lose ordering.  Linked list?
     private final List<Manager> managers = new ArrayList<>();
@@ -87,16 +91,20 @@ public class MCPerfPlugin extends JavaPlugin {
     @SuppressWarnings("RedundantArrayCreation")  // Permits trailing comma
     @Override
     public void onEnable() {
+        Server server = getServer();
+        Logger logger = getLogger();
+
         managers.addAll(Arrays.asList(new Manager[]{
-                securityManager = new SecurityManager(getServer(), getLogger(), this),
-                monitorManager = new MonitorManager(getServer(), getLogger(), this),
-                entityManager = new EntityManager(getServer(), getLogger(), this),
-                projectileManager = new ProjectileManager(getServer(), getLogger(), this),
-                validityManager = new ValidityManager(getServer(), getLogger(), this),
-                pluginMessageManager = new PluginMessageManager(getServer(), getLogger(), this),
-                screeningManager = new ScreeningManager(getServer(), getLogger(), this),
-                heuristicsManager = new HeuristicsManager(getServer(), getLogger(), this),
-                blacklistManager = new BlacklistManager(getServer(), getLogger(), this),
+                securityManager = new SecurityManager(server, logger, this),
+                monitorManager = new MonitorManager(server, logger, this),
+                entityManager = new EntityManager(server, logger, this),
+                projectileManager = new ProjectileManager(server, logger, this),
+                validityManager = new ValidityManager(server, logger, this),
+                pluginMessageManager = new PluginMessageManager(server, logger, this),
+                screeningManager = new ScreeningManager(server, logger, this),
+                heuristicsManager = new HeuristicsManager(server, logger, this),
+                blacklistManager = new BlacklistManager(server, logger, this),
+                proxyManager = new ProxyManager(server, logger, this),
         }));
 
         loadConfiguration();
@@ -140,7 +148,10 @@ public class MCPerfPlugin extends JavaPlugin {
                         return true;
 
                     case "reload":
-                        if (!sender.isOp() && !sender.hasPermission("mcperf.reload") && !sender.hasPermission("mcperf.*")) {
+                        if (!sender.isOp() &&
+                                !sender.hasPermission("mcperf.reload") &&
+                                !sender.hasPermission("mcperf.*") &&
+                                !sender.hasPermission("*")) {
                             return Util.denyPermission(sender);
                         }
 

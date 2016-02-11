@@ -7,6 +7,9 @@ import lombok.Getter;
 import org.bukkit.Server;
 import org.bukkit.event.Listener;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public abstract class Manager implements Listener, Configurable {
@@ -119,12 +122,54 @@ public abstract class Manager implements Listener, Configurable {
         Util.println(getServer(), message);
     }
 
-    protected void sendAlert(String format, Object... args) {
-        Util.sendAlert(getServer(), format, args);
+    protected void sendAlertAsync(String format, Object... args) {
+        sendAlertAsync(String.format(format, args));
     }
 
-    protected void sendAlert(String message) {
+    protected Future<Boolean> sendAlertAsync(String message) {
+        return getServer().getScheduler().callSyncMethod(getPlugin(), () -> {
+            Util.sendAlert(getServer(), message);
+            return true;
+        });
+    }
+
+    protected boolean sendAlert(String format, Object... args) {
+        return sendAlert(String.format(format, args));
+    }
+
+    protected boolean sendAlert(String message) {
         Util.sendAlert(getServer(), message);
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    protected boolean sendAlertSync(String format, Object... args) {
+        return sendAlertSync(String.format(format, args));
+    }
+
+    protected boolean sendAlertSync(String message) {
+        if (getServer().isPrimaryThread()) {
+            Util.sendAlert(getServer(), message);
+            return true;
+        } else {
+            try {
+                return sendAlertAsync(message).get();
+            } catch (InterruptedException | ExecutionException e) {
+                getLogger().log(Level.SEVERE, "Error sending async alert", e);
+                return false;
+            }
+        }
+    }
+
+    protected boolean sendNotice(String message) {
+        Util.sendAlert(getServer(), message);
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    protected boolean sendNotice(String format, Object... args) {
+        Util.sendAlert(getServer(), format, args);
+        return true;
     }
 
     @Override

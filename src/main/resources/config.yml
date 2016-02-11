@@ -55,6 +55,18 @@ blacklistManager:
   enabled: false
   blocks: []
 securityManager:
+  enabled: true
   bannedNames: []
   bannedIPs: []
   bannedUUIDs: []
+proxyManager:
+  enabled: false
+  threadPoolSize: 15  # Calculation: Max players connecting per tcpTimeout milliseconds times number of tcpPorts
+  tcpTimeout: 1000  # Milliseconds (1000 ms = 1 sec)
+  tcpPorts:
+    - 22
+    - 53
+    - 80
+    - 500
+    - 1080
+    - 1723

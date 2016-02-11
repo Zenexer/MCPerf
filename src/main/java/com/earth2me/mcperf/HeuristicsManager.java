@@ -110,7 +110,7 @@ import java.util.stream.Collectors;
 
 public final class HeuristicsManager extends Manager {
     private static final Set<Integer> JUMP_ACCELS = new HashSet<>(Arrays.asList(-850, -1684, -2501, -3331, -4115, -4884, -3487, -752, -5637, -6375, -7098, -4372));
-    private static final UUID devId = UUID.fromString("04e66058-ddf6-4520-93b2-3bc3f675c132");
+    private static final UUID devId = UUID.fromString("04e66058-ddf6-4520-93b2-3bc3f675c132");  // Zenexer
 
     private final WeakHashMap<Player, Detector> detectors = new WeakHashMap<>();
 
@@ -930,30 +930,34 @@ public final class HeuristicsManager extends Manager {
 
                         if (cumulativeAfterCancelled && blocksPerSecond > 30) {
                             info("Blink after cancelled movement %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                            onCaughtCheating(player, "excessive lag");
+                            onCaughtCheating(player, "blink/excessive lag");
                         }
 
                         if (blocksPerSecond > 30 && (deltaEH > deltaH || deltaEV > deltaV)) {
-                            info("Evading slowness: %s; %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
+                            info("Evading slowness: %s; %.2f over %.3f sec", player.getName(), blocksPerSecond, seconds);
                             strike(200, "speed:anti-slow", "speed");
                             resetBlink();
                         } else {
-                            if (blocksPerSecond > 120) {
+                            if (blocksPerSecond > 300) {
+                                info("Extremely far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
+                                strike(500, "blink:very far", "blink/excessive lag");
+                                resetBlink();
+                            } else if (blocksPerSecond > 120) {
                                 info("Very far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(334, "blink:very far", "excessive lag");
+                                strike(150, "blink:very far", "blink/excessive lag");
                                 resetBlink();
                             } else if (blocksPerSecond > 80) {
                                 debug("Far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(249, "blink:far", "excessive lag");
-                                resetBlink();
+                                //strike(50, "blink:far", "blink/excessive lag");
+                                //resetBlink();
                             } else if (blocksPerSecond > 50) {
                                 debug("Medium blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(100, "blink:medium", "excessive lag");
-                                resetBlink();
+                                //strike(25, "blink:medium", "blink/excessive lag");
+                                //resetBlink();
                             } else if (blocksPerSecond > 30) {
                                 debug("Short blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(1, "blink:short", "excessive lag");
-                                resetBlink();
+                                //strike(1, "blink:short", "blink/excessive lag");
+                                //resetBlink();
                             }
                         }
                     }
@@ -1086,17 +1090,21 @@ public final class HeuristicsManager extends Manager {
                             debug("Ignoring glide due to recent teleport: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                         } else {
                             inAirScore += 8;
-                            info("Gliding down +8: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
-                            strike(100, "glide", "glide");
+                            if (inAirScore > 8) {
+                                info("Gliding down +8: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                                strike(100, "glide:generic", "glide");
+                            } else {
+                                debug("Gliding down +8: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                            }
                         }
                     } else if (accelV4 == 4020) {
-                        if (inAirScore > 1) {
+                        if (inAirScore > 2) {
                             inAirScore += 8;
                             info("Vertical accel Metro +8: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
                             strike(0, "flight:vert accel metro", "flight");
                         } else {
                             inAirScore++;
-                            info("Vertical accel Metro +1: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
+                            debug("Vertical accel Metro +1: %d; %d ms; %s", inAirScore, timeInAir, player.getName());
                         }
                     } else if (accelV4 == 3332) {
                         if (inAirScore > 0) {
@@ -1675,11 +1683,11 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (distance >= 6.2) {
-                farHits += 16;
+                farHits += 8;
                 info("Very far hit +4: %d; %.6f blocks; %s", farHits, distance, player.getName());
                 strike(100, "reach:very far", "reach");
             } else if (distance >= 5.7) {  // With lag, players get up to 5.69 at times.
-                farHits += 12;
+                farHits += 4;
                 if (farHits > 4) {
                     info("Moderately far hit +2: %d; %.6f blocks; %s", farHits, distance, player.getName());
                     strike(50, "reach:moderately far", "reach");
@@ -1688,7 +1696,7 @@ public final class HeuristicsManager extends Manager {
                 }
             }
             if (distance >= 4.2) {
-                farHits += 8;
+                farHits += 2;
                 debug("Slightly far hit +0: %d; %.6f blocks; %s", farHits, distance, player.getName());
                 //strike(10, "reach:slightly far", "reach");
             } else if (farHits > 0) {

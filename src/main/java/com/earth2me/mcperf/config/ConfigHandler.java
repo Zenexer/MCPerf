@@ -167,6 +167,22 @@ public class ConfigHandler {
                 break;
             }
 
+            case "int[]":
+                value = config.getIntegerList(key).stream().mapToInt(x -> x).toArray();
+                break;
+
+            case "double[]":
+                value = config.getDoubleList(key).stream().mapToDouble(x -> x).toArray();
+                break;
+
+            case "long[]":
+                value = config.getLongList(key).stream().mapToLong(x -> x).toArray();
+                break;
+
+            case "java.lang.String[]":
+                value = config.getStringList(key).stream().toArray(String[]::new);
+                break;
+
             default:
                 throw new RuntimeException(String.format("Unexpected setting type: %s derived from %s for config setting %s", type, fullType, key));
         }

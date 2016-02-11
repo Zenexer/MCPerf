@@ -216,7 +216,7 @@ public final class ScreeningManager extends Manager {
             return true;
         }
 
-        boolean hasAllPermissions = sender.isOp() || sender.hasPermission("mcperf.*") || sender.hasPermission("mcperf.screen.*");
+        boolean hasAllPermissions = sender.isOp() || sender.hasPermission("*") || sender.hasPermission("mcperf.*") || sender.hasPermission("mcperf.screen.*");
 
         if (!hasAllPermissions && !sender.hasPermission("mcperf.screen")) {
             return Util.denyPermission(sender);
@@ -231,6 +231,8 @@ public final class ScreeningManager extends Manager {
         }
 
         Stream<Player> players;
+        // TODO: We can probably extract this bit, but there are a lot of local variables.
+        //noinspection Duplicates
         if (args.length == 1 && "*".equals(args[0])) {
             if (!hasAllPermissions && !sender.hasPermission("mcperf.screen.all")) {
                 return Util.denyPermission(sender);

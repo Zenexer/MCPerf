@@ -75,6 +75,12 @@ commands:
     description: "Starts an interactive screening process for hack clients."
     permission: mcperf.screen
     usage: '/<command> * | <player> [player]...'
+  proxy:
+    description: "Checks a player for signs of proxy/VPN usage."
+    permission: mcperf.proxy
+    usage: '/<command> <player>'
+    aliases:
+      - vpn
 permissions:
   mcperf.*:
     description: 'Full MCPerf access'
@@ -89,6 +95,7 @@ permissions:
       mcperf.screen.all: true
       mcperf.screen.*: true
       mcperf.receivealerts: true
+      mcperf.proxy: true
   mcperf.reload:
     description: 'Gives access to /mcperf; used to reload configuration'
   mcperf.chans.*:
@@ -117,3 +124,5 @@ permissions:
       mcperf.screen.all: true
   mcperf.receivealerts:
     description: 'Receive op notices about cheaters and similar discrepancies'
+  mcperf.proxy:
+    description: 'Gives access to /proxy; used to scan users for signs of proxy/VPN usage'

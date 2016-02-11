@@ -20,14 +20,27 @@ public class Util {
     }
 
     public static void sendAlert(Server server, String format, Object... args) {
-        sendAlert(server, ALERT_PREFIX + String.format(format, args));
+        sendAlert(server, String.format(format, args));
     }
 
     public static void sendAlert(Server server, String message) {
+        sendNotice(server, ALERT_PREFIX + message);
+    }
+
+    public static void sendNotice(Server server, String format, Object... args) {
+        sendNotice(server, String.format(format, args));
+    }
+
+    public static void sendNotice(Server server, String message) {
         Stream.concat(
                 Stream.of(server.getConsoleSender()),
-                server.getOnlinePlayers().stream().filter(p -> p.hasPermission("mcperf.receivealerts"))
-        ).distinct().forEach(s -> s.sendMessage(message));
+                server.getOnlinePlayers().stream().filter(
+                        p -> p.isOp() ||
+                                p.hasPermission("mcperf.receivealerts") ||
+                                p.hasPermission("mcperf.*") ||
+                                p.hasPermission("*")
+                )
+        ).distinct().forEach(s -> s.sendMessage(ALERT_PREFIX + message));
     }
 
     public static void println(Server server, String format, Object... args) {
