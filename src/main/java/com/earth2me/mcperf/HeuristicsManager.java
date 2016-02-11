@@ -930,7 +930,7 @@ public final class HeuristicsManager extends Manager {
 
                         if (cumulativeAfterCancelled && blocksPerSecond > 30) {
                             info("Blink after cancelled movement %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                            onCaughtCheating(player, "blink");
+                            onCaughtCheating(player, "excessive lag");
                         }
 
                         if (blocksPerSecond > 30 && (deltaEH > deltaH || deltaEV > deltaV)) {
@@ -940,19 +940,19 @@ public final class HeuristicsManager extends Manager {
                         } else {
                             if (blocksPerSecond > 120) {
                                 info("Very far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(1000, "blink:very far", "blink");
+                                strike(334, "blink:very far", "excessive lag");
                                 resetBlink();
                             } else if (blocksPerSecond > 80) {
                                 debug("Far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(500, "blink:far", "blink");
+                                strike(249, "blink:far", "excessive lag");
                                 resetBlink();
                             } else if (blocksPerSecond > 50) {
                                 debug("Medium blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(250, "blink:medium", "blink");
+                                strike(100, "blink:medium", "excessive lag");
                                 resetBlink();
                             } else if (blocksPerSecond > 30) {
                                 debug("Short blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(0, "blink:short", "blink");
+                                strike(1, "blink:short", "excessive lag");
                                 resetBlink();
                             }
                         }
@@ -1080,10 +1080,10 @@ public final class HeuristicsManager extends Manager {
                             inAirScore += 16;
                             info("Gliding down at Wurst speed +16: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                             strike(200, "glide:Wurst", "glide");
-                        } else if (deltaV4s == -980) {
-                            info("Ignoring glide due to key velocity: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                        } else if (deltaV4s == -980 || deltaV4s == -784) {
+                            debug("Ignoring glide due to key velocity: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                         } else if (teleported) {
-                            info("Ignoring glide due to recent teleport: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
+                            debug("Ignoring glide due to recent teleport: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
                         } else {
                             inAirScore += 8;
                             info("Gliding down +8: %d; %d ms, %.6f blocks/sec; %.6f blocks/sec^2; %s", inAirScore, timeInAir, deltaV, accelV, player.getName());
