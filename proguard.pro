@@ -59,3 +59,4 @@
 
 -dontnote                       com.earth2me.mcperf.validity.MetaValidator
 -dontnote                       org.hamcrest.**
+-dontnote                       com.earth2me.mcperf.ValidityManager

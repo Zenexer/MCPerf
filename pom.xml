@@ -97,6 +97,11 @@
 				<configuration>
 					<finalName>${project.build.finalName}.deob</finalName>
 					<outputDirectory>${basedir}/jar</outputDirectory>
+					<excludes>
+						<exclude>generated-sources/**</exclude>
+						<exclude>maven-*/**</exclude>
+						<exclude>surefire/**</exclude>
+					</excludes>
 				</configuration>
 			</plugin>
 			<plugin>
