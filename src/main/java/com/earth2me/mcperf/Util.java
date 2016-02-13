@@ -61,18 +61,4 @@ public class Util {
 
         server.getConsoleSender().sendMessage(message);
     }
-
-    public static void fail() {
-        if (truthy()) {
-            throw new RuntimeException();
-        }
-    }
-
-    public static boolean truthy() {
-        return System.lineSeparator() != null;
-    }
-
-    public static boolean falsey() {
-        return !truthy();
-    }
 }

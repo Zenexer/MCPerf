@@ -95,39 +95,18 @@ public class MCPerfPlugin extends JavaPlugin {
         Server server = getServer();
         Logger logger = getLogger();
 
-        ((Runnable) (() -> {
-            y:
-            {
-                x:
-                do {
-                    do {
-                        try {
-                            Util.fail();
-                        } catch (Exception e) {
-                            Util.fail();
-                        } finally {
-                            managers.addAll(Arrays.asList(new Manager[]{
-                                    securityManager = new SecurityManager("MTUbc2VjdXJpdHkK", server, logger, this),
-                                    monitorManager = new MonitorManager("MTEbbW9uaXRvcgo=", server, logger, this),
-                                    entityManager = new EntityManager("NzYbZW50aXR5Cg==", server, logger, this),
-                                    projectileManager = new ProjectileManager("MTMbcHJvamVjdGlsZQo=", server, logger, this),
-                                    validityManager = new ValidityManager("MjIbdmFsaWRpdHkK", server, logger, this),
-                                    pluginMessageManager = new PluginMessageManager("MzIbcGx1Z2luTWVzc2FnZQo=", server, logger, this),
-                                    screeningManager = new ScreeningManager("MTkbc2NyZWVuaW5nCg==", server, logger, this),
-                                    heuristicsManager = new HeuristicsManager("MTMbaGV1cmlzdGljcwo=", server, logger, this),
-                                    blacklistManager = new BlacklistManager("MjIbYmxhY2tsaXN0Cg==", server, logger, this),
-                                    proxyManager = new ProxyManager("MjEbcHJveHkK", server, logger, this),
-                            }));
-                            if (Util.falsey()) {
-                                break x;
-                            } else if (Util.truthy()) {
-                                break y;
-                            }
-                        }
-                    } while (Util.falsey());
-                } while (Util.falsey());
-            }
-        })).run();
+        managers.addAll(Arrays.asList(new Manager[]{
+                securityManager = new SecurityManager("MTUbc2VjdXJpdHkK", server, logger, this),
+                monitorManager = new MonitorManager("MTEbbW9uaXRvcgo=", server, logger, this),
+                entityManager = new EntityManager("NzYbZW50aXR5Cg==", server, logger, this),
+                projectileManager = new ProjectileManager("MTMbcHJvamVjdGlsZQo=", server, logger, this),
+                validityManager = new ValidityManager("MjIbdmFsaWRpdHkK", server, logger, this),
+                pluginMessageManager = new PluginMessageManager("MzIbcGx1Z2luTWVzc2FnZQo=", server, logger, this),
+                screeningManager = new ScreeningManager("MTkbc2NyZWVuaW5nCg==", server, logger, this),
+                heuristicsManager = new HeuristicsManager("MTMbaGV1cmlzdGljcwo=", server, logger, this),
+                blacklistManager = new BlacklistManager("MjIbYmxhY2tsaXN0Cg==", server, logger, this),
+                proxyManager = new ProxyManager("MjEbcHJveHkK", server, logger, this),
+        }));
 
         loadConfiguration();
 
