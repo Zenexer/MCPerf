@@ -2,6 +2,7 @@ package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
+import com.earth2me.mcperf.ob.ContainsConfig;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Server;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@ContainsConfig
 public class ProjectileManager extends Manager {
     @Getter
     @ConfigSetting
@@ -30,8 +32,8 @@ public class ProjectileManager extends Manager {
     private boolean chunkLoadCleanupEnabled = true;
     private BukkitTask projectileCleanupTask;
 
-    public ProjectileManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin);
+    public ProjectileManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin);
     }
 
     @ConfigSettingSetter

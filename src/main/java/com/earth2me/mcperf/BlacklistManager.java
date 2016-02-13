@@ -2,6 +2,7 @@ package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
+import com.earth2me.mcperf.ob.ContainsConfig;
 import lombok.Getter;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@ContainsConfig
 public class BlacklistManager extends Manager {
     private static final int MAX_BLOCK_ID = 255;
 
@@ -26,8 +28,8 @@ public class BlacklistManager extends Manager {
     private Set<Integer> blocks;
     private boolean[] optimizedBlocks = new boolean[MAX_BLOCK_ID];
 
-    public BlacklistManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin, false);
+    public BlacklistManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin, false);
     }
 
     @ConfigSettingSetter

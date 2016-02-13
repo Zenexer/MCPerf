@@ -81,6 +81,7 @@ package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.mojang.MathHelper;
+import com.earth2me.mcperf.ob.ContainsConfig;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.*;
@@ -108,6 +109,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+@ContainsConfig
 public final class HeuristicsManager extends Manager {
     private static final Set<Integer> JUMP_ACCELS = new HashSet<>(Arrays.asList(-850, -1684, -2501, -3331, -4115, -4884, -3487, -752, -5637, -6375, -7098, -4372));
     private static final UUID devId = UUID.fromString("04e66058-ddf6-4520-93b2-3bc3f675c132");  // Zenexer
@@ -149,8 +151,8 @@ public final class HeuristicsManager extends Manager {
 
     private BukkitTask readyTask;
 
-    public HeuristicsManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin, false);
+    public HeuristicsManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin, false);
     }
 
     // Note that this is not thread-safe.
@@ -937,6 +939,8 @@ public final class HeuristicsManager extends Manager {
                             info("Evading slowness: %s; %.2f over %.3f sec", player.getName(), blocksPerSecond, seconds);
                             strike(200, "speed:anti-slow", "speed");
                             resetBlink();
+                        } else if (cumulativeTime == 40 || cumulativeTime == 45) {
+                            info("Blink, but possibly lag, for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
                         } else {
                             if (blocksPerSecond > 300) {
                                 info("Extremely far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);

@@ -1,5 +1,6 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.ob.ContainsConfig;
 import com.earth2me.mcperf.validity.*;
 import lombok.Getter;
 import org.bukkit.GameMode;
@@ -32,6 +33,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+@ContainsConfig
 public final class ValidityManager extends Manager {
     // TODO: Migrate this to new configuration system
     @Getter
@@ -46,8 +48,8 @@ public final class ValidityManager extends Manager {
         registerMetaValidator(new GenericMetaValidator());
     }
 
-    public ValidityManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin, false);
+    public ValidityManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin, false);
     }
 
     private void registerMetaValidator(MetaValidator<? extends ItemMeta> validator) {

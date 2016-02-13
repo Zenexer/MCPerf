@@ -1,6 +1,7 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.ob.ContainsConfig;
 import lombok.Getter;
 import lombok.Setter;
 import net.md_5.bungee.api.ChatColor;
@@ -33,6 +34,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+@ContainsConfig
 public final class ScreeningManager extends Manager {
     // Don't use SecureRandom; no reason to waste entropy on this.
     private static final Random random = new Random();
@@ -44,8 +46,8 @@ public final class ScreeningManager extends Manager {
     @ConfigSetting
     private long gracePeriod = 20;
 
-    public ScreeningManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin, false);
+    public ScreeningManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin, false);
 
         getServer().getPluginCommand("screen").setExecutor(this::onCommand);
     }

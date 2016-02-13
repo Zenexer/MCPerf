@@ -2,6 +2,7 @@ package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
+import com.earth2me.mcperf.ob.ContainsConfig;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.ChatColor;
@@ -26,6 +27,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@ContainsConfig
 public class ProxyManager extends Manager {
     @SuppressWarnings("MismatchedReadAndWriteOfArray")  // IntelliJ is being stupid; remove later
     @Getter
@@ -61,8 +63,8 @@ public class ProxyManager extends Manager {
 
     private volatile ExecutorService executorService;
 
-    public ProxyManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin, false);
+    public ProxyManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin, false);
 
         getServer().getPluginCommand("proxy").setExecutor(this::onCommand);
     }

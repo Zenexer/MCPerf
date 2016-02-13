@@ -1,6 +1,7 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.ob.ContainsConfig;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Server;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@ContainsConfig
 public final class SecurityManager extends Manager {
     private static final String KICK_REASON = "Invalid player state";
 
@@ -33,8 +35,8 @@ public final class SecurityManager extends Manager {
     private Set<UUID> bannedUUIDs = new HashSet<>();
     private final Random random = new Random();
 
-    public SecurityManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin);
+    public SecurityManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin);
     }
 
     @Override

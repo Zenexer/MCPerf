@@ -3,15 +3,18 @@ package com.earth2me.mcperf;
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
 import com.earth2me.mcperf.config.Configurable;
+import com.earth2me.mcperf.ob.ContainsConfig;
 import lombok.Getter;
 import org.bukkit.Server;
 import org.bukkit.event.Listener;
 
+import java.util.Base64;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@ContainsConfig
 public abstract class Manager implements Listener, Configurable {
     @Getter
     @ConfigSetting
@@ -26,21 +29,29 @@ public abstract class Manager implements Listener, Configurable {
     private final PluginCommandSender commandSender;
     private String configPathCache;
     private boolean initializedOnce = false;
+    private final String id;
 
-    public Manager(Server server, Logger logger, MCPerfPlugin plugin) {
-        this(server, logger, plugin, true);
+    public Manager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        this(id, server, logger, plugin, true);
     }
 
-    public Manager(Server server, Logger logger, MCPerfPlugin plugin, boolean enabled) {
+    public Manager(String id, Server server, Logger logger, MCPerfPlugin plugin, boolean enabled) {
+        this.id = decodeId(id);
         this.server = server;
         this.logger = logger;
         this.plugin = plugin;
         this.enabled = enabled;
-        this.commandSender = new PluginCommandSender(server, getClass().getSimpleName());
+        this.commandSender = new PluginCommandSender(server, id);
     }
 
-    public String getId() {
-        return getClass().getSimpleName();
+    private static String decodeId(String encodedId) {
+        byte[] bytes = Base64.getDecoder().decode(encodedId);
+        return new String(bytes, 3, bytes.length - 4);
+    }
+
+    @Override
+    public final String getId() {
+        return id;
     }
 
     final void init() {
@@ -175,7 +186,7 @@ public abstract class Manager implements Listener, Configurable {
     @Override
     public String getConfigPath() {
         if (configPathCache == null) {
-            String name = getClass().getSimpleName();
+            String name = getId() + "Manager";  // TODO: Remove "Manager" suffix
             if (name.length() > 1) {
                 configPathCache = Character.toLowerCase(name.charAt(0)) + name.substring(1);
             } else {

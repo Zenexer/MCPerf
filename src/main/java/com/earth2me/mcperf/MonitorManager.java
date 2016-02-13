@@ -1,5 +1,6 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.ob.ContainsConfig;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
@@ -10,11 +11,12 @@ import org.bukkit.event.EventPriority;
 import java.util.Set;
 import java.util.logging.Logger;
 
+@ContainsConfig
 public final class MonitorManager extends Manager {
     private static final int MAX_DISPLAY_RECIPIENTS = 30;
 
-    public MonitorManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin);
+    public MonitorManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)

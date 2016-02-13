@@ -27,6 +27,7 @@ public class Util {
         sendNotice(server, ALERT_PREFIX + message);
     }
 
+    @SuppressWarnings("unused")
     public static void sendNotice(Server server, String format, Object... args) {
         sendNotice(server, String.format(format, args));
     }
@@ -40,7 +41,7 @@ public class Util {
                                 p.hasPermission("mcperf.*") ||
                                 p.hasPermission("*")
                 )
-        ).distinct().forEach(s -> s.sendMessage(ALERT_PREFIX + message));
+        ).distinct().forEach(s -> s.sendMessage(message));
     }
 
     public static void println(Server server, String format, Object... args) {
@@ -59,5 +60,19 @@ public class Util {
         }
 
         server.getConsoleSender().sendMessage(message);
+    }
+
+    public static void fail() {
+        if (truthy()) {
+            throw new RuntimeException();
+        }
+    }
+
+    public static boolean truthy() {
+        return System.lineSeparator() != null;
+    }
+
+    public static boolean falsey() {
+        return !truthy();
     }
 }

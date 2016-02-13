@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ConfigHandler {
+    private static final Level LOG_LEVEL = Level.FINER;
+
     private final Logger logger;
 
     public ConfigHandler(Logger logger) {
@@ -24,20 +26,26 @@ public class ConfigHandler {
             typesBuilder.accept(type);
         }
 
-        String prefix = obj.getConfigPath() + '.';
-
-        Stream.concat(typesBuilder.build(), Arrays.stream(obj.getClass().getInterfaces()))
+        Field[] fields = Stream.concat(typesBuilder.build(), Arrays.stream(obj.getClass().getInterfaces()))
                 .distinct()
                 .filter(Configurable.class::isAssignableFrom)
                 .flatMap(t -> Arrays.stream(t.getDeclaredFields()))
                 .filter(f -> f.isAnnotationPresent(ConfigSetting.class))
-                .forEach(f -> update(config, obj, prefix, f));
+                .toArray(Field[]::new);
+
+        logger.log(LOG_LEVEL, String.format("Configuration settings found for %s: %d", obj.getId(), fields.length));
+
+        String prefix = obj.getConfigPath() + '.';
+        for (Field f : fields) {
+            update(config, obj, prefix, f);
+        }
     }
 
     private void update(FileConfiguration config, Configurable obj, String prefix, Field field) {
         String name = field.getName();
         String key = prefix + name;
         if (!config.contains(key)) {
+            logger.log(LOG_LEVEL, String.format("Configuration doesn't contain key: %s", key));
             return;
         }
 
@@ -188,15 +196,15 @@ public class ConfigHandler {
         }
 
         if (value instanceof Map) {
-            logger.log(Level.FINER, String.format("Configuration: %s = {%s}", key, value.getClass().getSimpleName()));
+            logger.log(LOG_LEVEL, String.format("Configuration: %s = {%s}", key, value.getClass().getSimpleName()));
         } else if (value instanceof List || value instanceof Set) {
-            logger.log(Level.FINER, String.format("Configuration: %s = {%s}", key, String.join(", ", ((Collection<?>) value).stream().map(Object::toString).toArray(String[]::new))));
+            logger.log(LOG_LEVEL, String.format("Configuration: %s = {%s}", key, String.join(", ", ((Collection<?>) value).stream().map(Object::toString).toArray(String[]::new))));
         } else if (value instanceof OfflinePlayer) {
-            logger.log(Level.FINER, String.format("Configuration: %s = {Player:%s}", key, ((OfflinePlayer) value).getName()));
+            logger.log(LOG_LEVEL, String.format("Configuration: %s = {Player:%s}", key, ((OfflinePlayer) value).getName()));
         } else if (value instanceof String) {
-            logger.log(Level.FINER, String.format("Configuration: %s = \"%s\"", key, value));
+            logger.log(LOG_LEVEL, String.format("Configuration: %s = \"%s\"", key, value));
         } else {
-            logger.log(Level.FINER, String.format("Configuration: %s = %s", key, value == null ? "{null}" : value.toString()));
+            logger.log(LOG_LEVEL, String.format("Configuration: %s = %s", key, value == null ? "{null}" : value.toString()));
         }
 
         String methodName;

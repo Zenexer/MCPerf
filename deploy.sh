@@ -7,7 +7,7 @@ server=root@mc-0.internal.cowcraft.net
 cd jar || exit $?
 
 if [ $# -eq 0 ]; then
-	set -- dev kitpvp || exit $?
+	set -- dev || exit $?
 fi
 
 x=0
@@ -16,6 +16,10 @@ for i in "$@"; do
 	case "$i" in
 		common)
 			dest="/mc/$i/plugins/$jar"
+			;;
+
+		dev|prod)
+			dest="/repo/$i/$jar"
 			;;
 
 		*)

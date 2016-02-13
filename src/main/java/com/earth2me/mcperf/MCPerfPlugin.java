@@ -88,24 +88,46 @@ public class MCPerfPlugin extends JavaPlugin {
                 });
     }
 
-    @SuppressWarnings("RedundantArrayCreation")  // Permits trailing comma
+    @SuppressWarnings({"RedundantArrayCreation", "finally", "ContinueOrBreakFromFinallyBlock"})
+    // Permits trailing comma
     @Override
     public void onEnable() {
         Server server = getServer();
         Logger logger = getLogger();
 
-        managers.addAll(Arrays.asList(new Manager[]{
-                securityManager = new SecurityManager(server, logger, this),
-                monitorManager = new MonitorManager(server, logger, this),
-                entityManager = new EntityManager(server, logger, this),
-                projectileManager = new ProjectileManager(server, logger, this),
-                validityManager = new ValidityManager(server, logger, this),
-                pluginMessageManager = new PluginMessageManager(server, logger, this),
-                screeningManager = new ScreeningManager(server, logger, this),
-                heuristicsManager = new HeuristicsManager(server, logger, this),
-                blacklistManager = new BlacklistManager(server, logger, this),
-                proxyManager = new ProxyManager(server, logger, this),
-        }));
+        ((Runnable) (() -> {
+            y:
+            {
+                x:
+                do {
+                    do {
+                        try {
+                            Util.fail();
+                        } catch (Exception e) {
+                            Util.fail();
+                        } finally {
+                            managers.addAll(Arrays.asList(new Manager[]{
+                                    securityManager = new SecurityManager("MTUbc2VjdXJpdHkK", server, logger, this),
+                                    monitorManager = new MonitorManager("MTEbbW9uaXRvcgo=", server, logger, this),
+                                    entityManager = new EntityManager("NzYbZW50aXR5Cg==", server, logger, this),
+                                    projectileManager = new ProjectileManager("MTMbcHJvamVjdGlsZQo=", server, logger, this),
+                                    validityManager = new ValidityManager("MjIbdmFsaWRpdHkK", server, logger, this),
+                                    pluginMessageManager = new PluginMessageManager("MzIbcGx1Z2luTWVzc2FnZQo=", server, logger, this),
+                                    screeningManager = new ScreeningManager("MTkbc2NyZWVuaW5nCg==", server, logger, this),
+                                    heuristicsManager = new HeuristicsManager("MTMbaGV1cmlzdGljcwo=", server, logger, this),
+                                    blacklistManager = new BlacklistManager("MjIbYmxhY2tsaXN0Cg==", server, logger, this),
+                                    proxyManager = new ProxyManager("MjEbcHJveHkK", server, logger, this),
+                            }));
+                            if (Util.falsey()) {
+                                break x;
+                            } else if (Util.truthy()) {
+                                break y;
+                            }
+                        }
+                    } while (Util.falsey());
+                } while (Util.falsey());
+            }
+        })).run();
 
         loadConfiguration();
 

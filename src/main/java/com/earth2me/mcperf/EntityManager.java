@@ -1,6 +1,7 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.ob.ContainsConfig;
 import com.google.common.collect.Iterables;
 import lombok.Getter;
 import lombok.Setter;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+@ContainsConfig
 public final class EntityManager extends Manager {
     @Getter
     @Setter
@@ -52,8 +54,8 @@ public final class EntityManager extends Manager {
 
     private final AtomicBoolean cleanupRunning = new AtomicBoolean(false);
 
-    public EntityManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin);
+    public EntityManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin);
     }
 
     private static boolean isIgnoredEntityType(EntityType entityType) {

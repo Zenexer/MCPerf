@@ -1,5 +1,6 @@
 package com.earth2me.mcperf;
 
+import com.earth2me.mcperf.ob.ContainsConfig;
 import com.google.common.base.Joiner;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -24,14 +25,14 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
+@ContainsConfig
 public class PluginMessageManager extends Manager implements PluginMessageListener {
     private final static Charset CHARSET = Charset.forName("UTF-8");
 
     private WeakHashMap<Player, FmlInfo> fmls;
 
-    public PluginMessageManager(Server server, Logger logger, MCPerfPlugin plugin) {
-        super(server, logger, plugin);
+    public PluginMessageManager(String id, Server server, Logger logger, MCPerfPlugin plugin) {
+        super(id, server, logger, plugin);
     }
 
     @Override
