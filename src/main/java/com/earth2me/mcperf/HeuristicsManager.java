@@ -395,7 +395,7 @@ public final class HeuristicsManager extends Manager {
 
         switch (event.getAction()) {
             case LEFT_CLICK_AIR:
-                detector.markMiss();
+                detector.markMiss(true);
                 break;
 
             case LEFT_CLICK_BLOCK:
@@ -408,7 +408,7 @@ public final class HeuristicsManager extends Manager {
                     }
                 }
 
-                detector.markMiss();
+                detector.markMiss(false);
                 break;
         }
     }
@@ -687,6 +687,9 @@ public final class HeuristicsManager extends Manager {
         private Location cancelledMoveLocation = null;
         private Boolean lastSwimming = null;
         private int swimmingOscillations = 0;
+        private double lastDeltaEV;
+        private double lastDeltaEH;
+        private double lastDistanceE;
 
         public Detector(Player player) {
             this.player = new WeakReference<>(player);
@@ -908,9 +911,9 @@ public final class HeuristicsManager extends Manager {
             int deltaH4 = (int) (deltaH * 10000);
             int deltaEH4 = Math.max(0, (int) (deltaEH * 10000));
             Long preLastKnockbackTime = lastKnockbackTime;
+            double distanceE = Math.sqrt(Math.pow(deltaEH, 2) + Math.pow(deltaEV, 2));
 
-            if (deltaEV != 0 || deltaEH != 0) {
-                double distanceE = Math.sqrt(Math.pow(deltaEH, 2) + Math.pow(deltaEV, 2));
+            if (lastDeltaEV != 0 || lastDeltaEH != 0) {
 
                 if (player.getLocation().equals(cancelledMoveLocation)) {
                     cumulativeAfterCancelled = true;
@@ -922,11 +925,17 @@ public final class HeuristicsManager extends Manager {
                     cumulativeDistance = distanceE;
                     cumulativeAfterCancelled = false;
                 } else {
+                    double lastCumulativeTime = cumulativeLast - cumulativeStart;
+                    double lastSeconds = lastCumulativeTime / 1_000;
+                    double lastBlocksPerSecond = cumulativeDistance / lastSeconds;
+                    //double lastCumulativeLast = cumulativeLast;
+                    double lastCumulativeDistance = cumulativeDistance;
+
                     cumulativeLast = now;
                     cumulativeDistance += distanceE;
                     double cumulativeTime = cumulativeLast - cumulativeStart;
 
-                    if (cumulativeTime > 25 && cumulativeTime < 300 && distanceE < 0.7) {
+                    if (lastCumulativeTime > 25 && lastCumulativeTime < 300 && lastDistanceE < 0.7) {
                         double seconds = cumulativeTime / 1_000;
                         double blocksPerSecond = cumulativeDistance / seconds;
 
@@ -939,34 +948,46 @@ public final class HeuristicsManager extends Manager {
                             info("Evading slowness: %s; %.2f over %.3f sec", player.getName(), blocksPerSecond, seconds);
                             strike(200, "speed:anti-slow", "speed");
                             resetBlink();
-                        } else if (cumulativeTime == 40 || cumulativeTime == 45) {
-                            info("Blink, but possibly lag, for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                        } else {
-                            if (blocksPerSecond > 300) {
-                                info("Extremely far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(500, "blink:very far", "blink/excessive lag");
-                                resetBlink();
-                            } else if (blocksPerSecond > 120) {
-                                info("Very far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                strike(150, "blink:very far", "blink/excessive lag");
-                                resetBlink();
-                            } else if (blocksPerSecond > 80) {
-                                debug("Far blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                //strike(50, "blink:far", "blink/excessive lag");
-                                //resetBlink();
-                            } else if (blocksPerSecond > 50) {
-                                debug("Medium blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                //strike(25, "blink:medium", "blink/excessive lag");
-                                //resetBlink();
-                            } else if (blocksPerSecond > 30) {
-                                debug("Short blink for %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                                //strike(1, "blink:short", "blink/excessive lag");
-                                //resetBlink();
+                        } else if (blocksPerSecond < lastBlocksPerSecond) {
+                            if (lastCumulativeDistance >= 7) {
+                                boolean suspicious = deltaH == 0 && deltaV == 0;
+
+                                if (blocksPerSecond > 300) {
+                                    info("Extremely fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
+                                    strike(1000, "blink:extremely fast", "blink/excessive lag");
+                                } else if (blocksPerSecond > 120) {
+                                    if (suspicious) {
+                                        info("Very fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
+                                        strike(250, "blink:very fast", "blink/excessive lag");
+                                    } else {
+                                        // This seems to trigger a lot of false positives.
+                                        debug("Very fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
+                                    }
+                                } else if (blocksPerSecond > 80) {
+                                    info("Fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
+                                    strike(suspicious ? 250 : 100, "blink:fast", "blink/excessive lag");
+                                } else if (blocksPerSecond > 50) {
+                                    if (suspicious) {
+                                        info("Medium blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
+                                        strike(100, "blink:medium", "blink/excessive lag");
+                                    } else {
+                                        debug("Medium blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
+                                        strike(0, "blink:medium", "blink/excessive lag");
+                                    }
+                                } else if (blocksPerSecond > 30) {
+                                    debug("Short blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
+                                }
                             }
+
+                            resetBlink();
                         }
                     }
                 }
             }
+
+            lastDistanceE = distanceE;
+            lastDeltaEV = deltaEV;
+            lastDeltaEH = deltaEH;
 
             if (lastKnockbackTime != null) {
                 long timeSinceKnockback = now - lastKnockbackTime;
@@ -1489,7 +1510,7 @@ public final class HeuristicsManager extends Manager {
             onKnockback(entity);
         }
 
-        public void markMiss() {
+        public void markMiss(boolean air) {
             Player player = getPlayerIfEnabled();
             if (player == null) {
                 return;
@@ -1515,6 +1536,7 @@ public final class HeuristicsManager extends Manager {
 
             if (nearest == null) {
                 debug("%s swatted at air", player.getName());
+                air = false;  // Indicating that we're not hitting the air near a player
             } else {
                 debug("%s missed %s (%01.3f)", player.getName(), nearest.getName(), distance);
 
@@ -1533,7 +1555,7 @@ public final class HeuristicsManager extends Manager {
                 }
             }
 
-            update();
+            update(air);
         }
 
         public void resetAttackSpeed() {
@@ -1609,7 +1631,7 @@ public final class HeuristicsManager extends Manager {
             resetAttackSpeed();
         }
 
-        private void update() {
+        private void update(boolean hitOrAir) {
             Player player = getPlayerIfEnabled();
             if (player == null) {
                 return;
@@ -1624,7 +1646,7 @@ public final class HeuristicsManager extends Manager {
                 } else if (deltaTime > 75) {
                     debug("Normal attack: %d ms", deltaTime);
                     resetAttackSpeed();
-                } else {
+                } else if (hitOrAir) {
                     highSpeedAttacks++;
 
                     if (highSpeedAttacks >= 5) {
@@ -1729,7 +1751,7 @@ public final class HeuristicsManager extends Manager {
                 );
             }
 
-            update();
+            update(true);
 
             if (suspiciousAims >= 6) {
                 onCaughtCheating(player, "aimbot (hit)");  // Particularly Kryptonite and Reflex

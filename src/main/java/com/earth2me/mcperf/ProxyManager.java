@@ -127,7 +127,7 @@ public class ProxyManager extends Manager {
         }
 
         Player player = event.getPlayer();
-        scanPlayer(player, openPorts -> sendAlertAsync("Player %s may be using a proxy/VPN.  Open ports: %s", player.getName(), String.join(", ", openPorts)), null);
+        scanPlayer(player, openPorts -> sendNoticeAsync("Player %s may be using a proxy/VPN.  Open ports: %s", player.getName(), String.join(", ", openPorts)), null);
     }
 
     private boolean onCommand(CommandSender sender, Command command, String label, String[] args) {

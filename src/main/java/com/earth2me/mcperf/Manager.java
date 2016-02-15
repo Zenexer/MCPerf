@@ -144,6 +144,17 @@ public abstract class Manager implements Listener, Configurable {
         });
     }
 
+    protected void sendNoticeAsync(String format, Object... args) {
+        sendNoticeAsync(String.format(format, args));
+    }
+
+    protected Future<Boolean> sendNoticeAsync(String message) {
+        return getServer().getScheduler().callSyncMethod(getPlugin(), () -> {
+            Util.sendNotice(getServer(), message);
+            return true;
+        });
+    }
+
     protected boolean sendAlert(String format, Object... args) {
         return sendAlert(String.format(format, args));
     }

@@ -8,6 +8,7 @@ import java.util.stream.Stream;
 
 public class Util {
     private static final String ALERT_PREFIX = ChatColor.RED + "/!\\ MCPerf /!\\ " + ChatColor.LIGHT_PURPLE;
+    private static final String NOTICE_PREFIX = ChatColor.GRAY + "[MCPerf] ";
 
     private Util() {
         throw new UnsupportedOperationException("Static class");
@@ -24,7 +25,7 @@ public class Util {
     }
 
     public static void sendAlert(Server server, String message) {
-        sendNotice(server, ALERT_PREFIX + message);
+        send(server, ALERT_PREFIX, message);
     }
 
     @SuppressWarnings("unused")
@@ -33,6 +34,12 @@ public class Util {
     }
 
     public static void sendNotice(Server server, String message) {
+        send(server, NOTICE_PREFIX, message);
+    }
+
+    private static void send(Server server, String prefix, String message) {
+        String text = prefix + message;
+
         Stream.concat(
                 Stream.of(server.getConsoleSender()),
                 server.getOnlinePlayers().stream().filter(
@@ -41,7 +48,7 @@ public class Util {
                                 p.hasPermission("mcperf.*") ||
                                 p.hasPermission("*")
                 )
-        ).distinct().forEach(s -> s.sendMessage(message));
+        ).distinct().forEach(s -> s.sendMessage(text));
     }
 
     public static void println(Server server, String format, Object... args) {
