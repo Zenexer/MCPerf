@@ -1,8 +1,7 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigHandler;
-import com.earth2me.mcperf.validity.ValidityConfiguration;
-import lombok.Getter;
+import com.earth2me.mcperf.managers.Manager;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -16,30 +15,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MCPerfPlugin extends JavaPlugin {
-    @Getter
-    private EntityManager entityManager;
-    @Getter
-    private ProjectileManager projectileManager;
-    @Getter
-    private ValidityManager validityManager;
-    @Getter
-    private MonitorManager monitorManager;
-    @Getter
-    private SecurityManager securityManager;
-    @Getter
-    private PluginMessageManager pluginMessageManager;
-    @Getter
-    private ScreeningManager screeningManager;
-    @Getter
-    private HeuristicsManager heuristicsManager;
-    @Getter
-    private BlacklistManager blacklistManager;
-    @Getter
-    private ProxyManager proxyManager;
-
-    // Thought: Should this be a set?  Would lose ordering.  Linked list?
-    private final List<Manager> managers = new ArrayList<>();
+    private final List<Manager> managers = new LinkedList<>();
     private final Set<Manager> registered = new HashSet<>();
+    private final ServiceLoader<Manager> loader = ServiceLoader.load(Manager.class);
 
     private FileConfiguration ensureConfig() {
         try {
@@ -76,9 +54,6 @@ public class MCPerfPlugin extends JavaPlugin {
             config.apply(yaml, manager);
         }
 
-        // TODO: Migrate this to new configuration system
-        validityManager.setConfig(new ValidityConfiguration(yaml));
-
         managers.stream()
                 .filter(Manager::isEnabled)
                 .filter(m -> !registered.contains(m))
@@ -88,25 +63,30 @@ public class MCPerfPlugin extends JavaPlugin {
                 });
     }
 
-    @SuppressWarnings({"RedundantArrayCreation", "finally", "ContinueOrBreakFromFinallyBlock"})
+    @SuppressWarnings("RedundantArrayCreation")
     // Permits trailing comma
     @Override
     public void onEnable() {
         Server server = getServer();
         Logger logger = getLogger();
 
-        managers.addAll(Arrays.asList(new Manager[]{
-                securityManager = new SecurityManager("MTUbc2VjdXJpdHkK", server, logger, this),
-                monitorManager = new MonitorManager("MTEbbW9uaXRvcgo=", server, logger, this),
-                entityManager = new EntityManager("NzYbZW50aXR5Cg==", server, logger, this),
-                projectileManager = new ProjectileManager("MTMbcHJvamVjdGlsZQo=", server, logger, this),
-                validityManager = new ValidityManager("MjIbdmFsaWRpdHkK", server, logger, this),
-                pluginMessageManager = new PluginMessageManager("MzIbcGx1Z2luTWVzc2FnZQo=", server, logger, this),
-                screeningManager = new ScreeningManager("MTkbc2NyZWVuaW5nCg==", server, logger, this),
-                heuristicsManager = new HeuristicsManager("MTMbaGV1cmlzdGljcwo=", server, logger, this),
-                blacklistManager = new BlacklistManager("MjIbYmxhY2tsaXN0Cg==", server, logger, this),
-                proxyManager = new ProxyManager("MjEbcHJveHkK", server, logger, this),
-        }));
+        for (Manager manager : loader) {
+            manager.initService(server, logger, this);
+            managers.add(manager);
+        }
+
+        /*managers.addAll(Arrays.asList(new Manager[]{
+                new SecurityManager(, server, logger, this),
+                new MonitorManager(, server, logger, this),
+                new EntityManager(, server, logger, this),
+                new ProjectileManager(, server, logger, this),
+                new ValidityManager(, server, logger, this),
+                new PluginMessageManager(, server, logger, this),
+                new ScreeningManager(, server, logger, this),
+                new HeuristicsManager(, server, logger, this),
+                new BlacklistManager(, server, logger, this),
+                new ProxyManager(, server, logger, this),
+        }));*/
 
         loadConfiguration();
 

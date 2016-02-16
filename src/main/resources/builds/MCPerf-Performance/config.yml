@@ -1,0 +1,13 @@
+# vim: ft=yaml et ts=2 sts=2 sw=2
+entityManager:
+  enabled: false
+  chunkLoadScanningEnabled: false
+  nearbyChunkRadius: 1
+  nearbyItemLimit: 250
+  nearbyCreatureLimit: 400
+  worldItemLimit: 1000
+  worldCreatureLimit: 2000
+projectileManager:
+  enabled: false
+  chunkLoadCleanupEnabled: true
+  projectileCleanupInterval: 600  # Ticks

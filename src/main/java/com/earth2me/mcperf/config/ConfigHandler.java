@@ -39,6 +39,8 @@ public class ConfigHandler {
         for (Field f : fields) {
             update(config, obj, prefix, f);
         }
+
+        obj.onConfig(config);
     }
 
     private void update(FileConfiguration config, Configurable obj, String prefix, Field field) {

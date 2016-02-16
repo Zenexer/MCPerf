@@ -1,10 +1,11 @@
 #!/usr/bin/env sh
 set -e
 
+dir=jar/final
 jar=MCPerf.jar
 server=root@mc-0.internal.cowcraft.net
 
-cd jar || exit $?
+cd "$dir" || exit $?
 
 if [ $# -eq 0 ]; then
 	set -- dev || exit $?
