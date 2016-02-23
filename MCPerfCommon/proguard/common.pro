@@ -3,12 +3,14 @@
 
 ## Input/Output ##
 
-#-basedirectory                  .
-#-injars                         jar/MCPerf.deob.jar(!maven-archiver/**,!maven-status/**,!surefire/**,!META-INF/maven/**)
-#-outjars                        jar/MCPerf.jar
-#-libraryjars                    <java.home>/lib/rt.jar
-#-libraryjars                    server.jar
+-libraryjars                    <java.home>/lib/rt.jar
 -target                         1.8
+#-libraryjars                    ../server.jar
+#-basedirectory                  ../jar
+#-injars                         MCPerf.deob.jar(!maven-archiver/**,!maven-status/**,!surefire/**,!META-INF/maven/**)
+#-outjars                        jar/MCPerf.jar
+#-injars                         assembly(MCPerf-Full.jar;)
+#-outjars                        final
 
 
 ## Keep ##

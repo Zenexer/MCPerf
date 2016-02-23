@@ -1,0 +1,11 @@
+<component>
+	<fileSets>
+		<fileSet>
+			<directory>${basedir}/assembly/free</directory>
+			<includes>
+				<include>**/*</include>
+			</includes>
+			<filtered>true</filtered>
+		</fileSet>
+	</fileSets>
+</component>

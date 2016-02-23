@@ -1,5 +1,5 @@
-name: MCPerf-Performance
-version: 1.2.0
+name: ${mcperf.name}
+version: ${project.version}
 description: 'Performance and security utility'
 load: STARTUP
 author: Zenexer

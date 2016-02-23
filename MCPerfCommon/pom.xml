@@ -7,14 +7,9 @@
 	<groupId>com.earth2me</groupId>
 	<artifactId>mcperf</artifactId>
 	<version>1.3-SNAPSHOT</version>
-	<packaging>pom</packaging>
+	<packaging>jar</packaging>
 	<url>https://e2m.co/</url>
 	<name>MCPerf</name>
-
-	<organization>
-		<name>Earth2Me, LLC</name>
-		<url>https://e2m.co/</url>
-	</organization>
 
 	<licenses>
 		<license>
@@ -22,15 +17,6 @@
 			<url>data:All%20Rights%20Reserved</url>
 		</license>
 	</licenses>
-
-	<modules>
-		<module>mcperf-common</module>
-		<module>mcperf-performance</module>
-		<module>mcperf-security</module>
-		<module>mcperf-anticheat</module>
-		<module>mcperf-util</module>
-		<module>mcperf-creative</module>
-	</modules>
 
 	<scm>
 		<connection>scm:git:https://github.com/Earth2Me/MCPerf</connection>
@@ -43,23 +29,17 @@
 			<id>spigot-repo</id>
 			<url>http://hub.spigotmc.org/nexus/content/groups/public</url>
 		</repository>
-		<!--
-		<repository>
+		<!--repository>
 			<id>ess-repo</id>
 			<url>http://repo.ess3.net/content/groups/public</url>
-		</repository>
-		-->
+		</repository-->
 	</repositories>
 
 	<distributionManagement>
 		<repository>
 			<id>ssh-cowcraft</id>
-			<url>scp://mc-0.internal.cowcraft.net/repo/mvn/release</url>
+			<url>scp://mc-0.internal.cowcraft.net/repo/mvn</url>
 		</repository>
-		<snapshotRepository>
-			<id>ssh-cowcraft</id>
-			<url>scp://mc-0.internal.cowcraft.net/repo/mvn/snapshot</url>
-		</snapshotRepository>
 	</distributionManagement>
 
 	<dependencies>
@@ -82,6 +62,9 @@
 	</dependencies>
 
 	<build>
+		<!--
+		<finalName>${project.name}-${mcperf.build}</finalName>
+		-->
 		<finalName>${project.name}</finalName>
 
 		<sourceDirectory>src/main/java</sourceDirectory>
@@ -237,4 +220,38 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<!--profiles>
+		<profile>
+			<id>full</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<mcperf.build>Full</mcperf.build>
+			</properties>
+		</profile>
+		<profile>
+			<id>performance</id>
+			<properties>
+				<mcperf.build>Performance</mcperf.build>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-compiler-plugin</artifactId>
+						<configuration>
+							<excludes>
+								<exclude>com/earth2me/mcperf/managers/anticheat/**/*.java</exclude>
+								<exclude>com/earth2me/mcperf/managers/creative/**/*.java</exclude>
+								<exclude>com/earth2me/mcperf/managers/security/**/*.java</exclude>
+								<exclude>com/earth2me/mcperf/managers/util/**/*.java</exclude>
+							</excludes>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles-->
 </project>
