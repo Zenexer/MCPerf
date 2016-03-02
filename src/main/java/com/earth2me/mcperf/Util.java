@@ -1,14 +1,17 @@
 package com.earth2me.mcperf;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
 
+import java.util.logging.Level;
 import java.util.stream.Stream;
 
 public class Util {
-    private static final String ALERT_PREFIX = ChatColor.RED + "/!\\ MCPerf /!\\ " + ChatColor.LIGHT_PURPLE;
-    private static final String NOTICE_PREFIX = ChatColor.GRAY + "[MCPerf] ";
+    public static final String NAME = "MCPerf";
+    private static final String ALERT_PREFIX = ChatColor.RED + "/!\\ " + NAME + " /!\\ " + ChatColor.LIGHT_PURPLE;
+    private static final String NOTICE_PREFIX = ChatColor.GRAY + "[" + NAME + "] ";
 
     private Util() {
         throw new UnsupportedOperationException("Static class");

@@ -1,5 +1,6 @@
 package com.earth2me.mcperf.managers.creative;
 
+import com.earth2me.mcperf.compat.Compat;
 import com.earth2me.mcperf.managers.Manager;
 import com.earth2me.mcperf.ob.ContainsConfig;
 import com.earth2me.mcperf.ob.Service;
@@ -45,9 +46,8 @@ public final class ValidityManager extends Manager {
     private final Validator genericValidator = new GenericValidator();
 
     {
+        registerMetaValidator(Compat.hasAttributeApi() ? new GenericMetaValidator_1_9() : new GenericMetaValidator_1_8());
         registerMetaValidator(new PotionMetaValidator());
-        registerMetaValidator(new EnchantmentMetaValidator());
-        registerMetaValidator(new GenericMetaValidator());
     }
 
     public ValidityManager() {
@@ -120,22 +120,14 @@ public final class ValidityManager extends Manager {
         ItemMeta meta = stack.getItemMeta();
 
         if (stack.hasItemMeta()) {
-            MetaValidator<?> metaValidator = null;
-
             for (Map.Entry<Class<? extends ItemMeta>, MetaValidator> entry : metaValidators.entrySet()) {
                 Class<? extends ItemMeta> key = entry.getKey();
                 if (key != ItemMeta.class && key.isInstance(meta)) {
-                    metaValidator = entry.getValue();
+                    if (!entry.getValue().isValid(stack, strict)) {
+                        return false;
+                    }
                     break;
                 }
-            }
-
-            if (metaValidator == null) {
-                metaValidator = metaValidators.get(ItemMeta.class);
-            }
-
-            if (!metaValidator.isValid(stack, strict)) {
-                return false;
             }
         }
 
