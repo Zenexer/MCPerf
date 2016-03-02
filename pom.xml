@@ -62,14 +62,14 @@
 	</dependencies>
 
 	<build>
-		<finalName>${project.name}-${mcperf.build}</finalName>
+		<finalName>${project.name}</finalName>
 
 		<sourceDirectory>src/main/java</sourceDirectory>
 		<testSourceDirectory>src/test/java</testSourceDirectory>
 		<outputDirectory>target</outputDirectory>
 		<resources>
 			<resource>
-				<directory>src/main/resources/builds/${project.name}-${mcperf.build}</directory>
+				<directory>src/main/resources</directory>
 			</resource>
 		</resources>
 
@@ -105,8 +105,8 @@
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>2.6</version>
 				<configuration>
-					<finalName>${project.build.finalName}.deob</finalName>
-					<outputDirectory>${basedir}/jar</outputDirectory>
+					<finalName>${project.build.finalName}</finalName>
+					<outputDirectory>${basedir}/jar/deob</outputDirectory>
 					<excludes>
 						<exclude>generated-sources/**</exclude>
 						<exclude>maven-*/**</exclude>
@@ -120,21 +120,18 @@
 				<version>2.0.11</version>
 				<executions>
 					<execution>
-						<id>${project.build.finalName}</id>
+						<id>proguard</id>
 						<phase>package</phase>
 						<goals>
 							<goal>proguard</goal>
 						</goals>
 						<configuration>
-							<injar>${project.build.finalName}.deob.jar</injar>
+							<injar>deob/${project.build.finalName}.jar</injar>
 							<outjar>final/${project.build.finalName}.jar</outjar>
 							<outputDirectory>${basedir}/jar</outputDirectory>
-							<proguardInclude>${basedir}/proguard/${project.build.finalName}.pro</proguardInclude>
+							<proguardInclude>${basedir}/maven.pro</proguardInclude>
 							<addMavenDescriptor>false</addMavenDescriptor>
 							<includeDependency>true</includeDependency>
-							<libs>
-								<lib>${java.home}/lib/rt.jar</lib>
-							</libs>
 						</configuration>
 					</execution>
 				</executions>
@@ -145,7 +142,7 @@
 				<version>1.0</version>
 				<executions>
 					<execution>
-						<id>MCPerf-Full</id>
+						<id>dev</id>
 						<phase>deploy</phase>
 						<goals>
 							<goal>upload</goal>
@@ -161,38 +158,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
-	<profiles>
-		<profile>
-			<id>full</id>
-			<activation>
-				<activeByDefault>true</activeByDefault>
-			</activation>
-			<properties>
-				<mcperf.build>Full</mcperf.build>
-			</properties>
-		</profile>
-		<profile>
-			<id>performance</id>
-			<properties>
-				<mcperf.build>Performance</mcperf.build>
-			</properties>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-compiler-plugin</artifactId>
-						<configuration>
-							<excludes>
-								<exclude>com/earth2me/mcperf/managers/anticheat/**/*.java</exclude>
-								<exclude>com/earth2me/mcperf/managers/creative/**/*.java</exclude>
-								<exclude>com/earth2me/mcperf/managers/security/**/*.java</exclude>
-								<exclude>com/earth2me/mcperf/managers/util/**/*.java</exclude>
-							</excludes>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>

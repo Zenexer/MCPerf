@@ -1280,7 +1280,8 @@ public final class HeuristicsManager extends Manager {
                 if (obviousFlyHacks > 0) {
                     info("Suspicious horizontal movement; not decrementing fly hacks: %s; EH: %.6f; EV: %.6f", player.getName(), deltaEH, deltaEV);
                 }
-                strike(0, "speed:suspicious", "speed");
+                // Knockback II triggers this
+                //strike(0, "speed:suspicious", "speed");
             } else if (obviousFlyHacks > 0) {
                 obviousFlyHacks--;
                 debug("Decremented obvious fly hack movements for %s -1: %d", player.getName(), obviousFlyHacks);
@@ -1308,9 +1309,10 @@ public final class HeuristicsManager extends Manager {
                 info("Very fast horizontal movement for %s +160: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
                 strike(100, "flight:very fast", "flight");
             } else if (deltaEH4 >= 1_2000) {
-                suspiciousFlyHacks += 120;
-                info("Moderately fast horizontal movement for %s +120: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
-                strike(25, "speed:moderately fast", "speed");
+                // Knockback II triggers this
+                suspiciousFlyHacks += 20;
+                info("Moderately fast horizontal movement for %s +20: %d; EH: %.6f", player.getName(), suspiciousFlyHacks, deltaEH);
+                //strike(25, "speed:moderately fast", "speed");
             } else if (deltaEH4 >= 9800) {  // Wurst
                 if (deltaV4 == 0) {
                     //suspiciousFlyHacks += 20;

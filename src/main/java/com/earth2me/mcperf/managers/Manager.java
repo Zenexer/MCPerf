@@ -30,7 +30,7 @@ public abstract class Manager implements Listener, Configurable {
     @Getter
     private Plugin plugin;
     @Getter
-    private final PluginCommandSender commandSender;
+    private PluginCommandSender commandSender;
     private String configPathCache;
     private boolean initializedOnce = false;
     private final String id;
@@ -42,13 +42,13 @@ public abstract class Manager implements Listener, Configurable {
     public Manager(String id, boolean enabled) {
         this.id = decodeId(id);
         this.enabled = enabled;
-        this.commandSender = new PluginCommandSender(server, id);
     }
 
     public void initService(Server server, Logger logger, Plugin plugin) {
         this.server = server;
         this.logger = logger;
         this.plugin = plugin;
+        this.commandSender = new PluginCommandSender(getServer(), getId());
     }
 
     private static String decodeId(String encodedId) {
@@ -144,6 +144,7 @@ public abstract class Manager implements Listener, Configurable {
         Util.println(getServer(), message);
     }
 
+    @SuppressWarnings("unused")
     protected void sendAlertAsync(String format, Object... args) {
         sendAlertAsync(String.format(format, args));
     }

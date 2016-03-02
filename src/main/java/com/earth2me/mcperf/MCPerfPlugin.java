@@ -6,18 +6,36 @@ import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.URL;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MCPerfPlugin extends JavaPlugin {
+    private static ServiceLoader<Manager> loader;
+    private static ClassLoader loaderContext;
+
     private final List<Manager> managers = new LinkedList<>();
     private final Set<Manager> registered = new HashSet<>();
-    private final ServiceLoader<Manager> loader = ServiceLoader.load(Manager.class);
+
+    private void initLoader() {
+
+
+        initLoader(getClassLoader());
+    }
+
+    private static synchronized void initLoader(ClassLoader classLoader) {
+        if (loader == null) {
+            loaderContext = classLoader;
+            loader = ServiceLoader.load(Manager.class, classLoader);
+        }
+    }
 
     private FileConfiguration ensureConfig() {
         try {
@@ -63,16 +81,36 @@ public class MCPerfPlugin extends JavaPlugin {
                 });
     }
 
-    @SuppressWarnings("RedundantArrayCreation")
-    // Permits trailing comma
+    @SuppressWarnings("RedundantArrayCreation")  // Permits trailing comma
     @Override
     public void onEnable() {
         Server server = getServer();
         Logger logger = getLogger();
 
+        initLoader();
+
+        managers.clear();
         for (Manager manager : loader) {
             manager.initService(server, logger, this);
             managers.add(manager);
+        }
+
+        if (managers.isEmpty()) {
+            logger.log(Level.SEVERE, "No managers were found!");
+
+            String path = "META-INF/services/" + Manager.class.getName();
+            logger.log(Level.SEVERE, "Searched path: " + path);
+
+            try {
+                Enumeration<URL> urls = loaderContext.getResources(path);
+
+                for (URL url; urls.hasMoreElements(); ) {
+                    url = urls.nextElement();
+                    logger.log(Level.SEVERE, "Resource URL: " + Objects.toString(url));
+                }
+            } catch (IOException e) {
+                logger.log(Level.SEVERE, "Exception searching path", e);
+            }
         }
 
         /*managers.addAll(Arrays.asList(new Manager[]{
@@ -115,7 +153,8 @@ public class MCPerfPlugin extends JavaPlugin {
     }
 
     private void sendVersion(CommandSender sender) {
-        sender.sendMessage("MCPerf: Minecraft performance and security plugin by Zenexer");
+        PluginDescriptionFile desc = getDescription();
+        sender.sendMessage(String.format("%s v%s: %s by %s", desc.getName(), desc.getVersion(), desc.getDescription(), String.join(", ", desc.getAuthors())));
     }
 
     @Override

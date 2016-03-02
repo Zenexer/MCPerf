@@ -219,7 +219,7 @@ public class ConfigHandler {
             obj.getClass().getMethod(methodName, field.getType()).invoke(obj, value);
             return;
         } catch (NoSuchMethodException e) {
-            logger.log(Level.WARNING, String.format("No setter found for signature: void %s(%s)", methodName, field.getType().getName()));
+            logger.log(Level.WARNING, String.format("No setter found for signature: void %s(%s) in %s", methodName, field.getType().getName(), obj.getId()));
         } catch (InvocationTargetException | IllegalAccessException e) {
             logger.log(Level.SEVERE, String.format("Failed to set configuration value for %s via setter.", key), e);
             return;
