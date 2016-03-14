@@ -2,8 +2,8 @@ package com.earth2me.mcperf.managers.creative;
 
 import com.earth2me.mcperf.compat.Compat;
 import com.earth2me.mcperf.managers.Manager;
-import com.earth2me.mcperf.ob.ContainsConfig;
-import com.earth2me.mcperf.ob.Service;
+import com.earth2me.mcperf.annotation.ContainsConfig;
+import com.earth2me.mcperf.annotation.Service;
 import com.earth2me.mcperf.managers.creative.validity.*;
 import lombok.Getter;
 import org.bukkit.GameMode;

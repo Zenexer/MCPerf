@@ -30,7 +30,7 @@
 	public !static void set?*(***);
 }
 # This doesn't work at the moment:
--keepclassmembers                                     @com.earth2me.mcperf.ob.ContainsConfig class * {
+-keepclassmembers                                     @com.earth2me.mcperf.annotation.ContainsConfig class * {
 	@com.earth2me.mcperf.config.ConfigSetting <fields>;
 	@com.earth2me.mcperf.config.ConfigSettingSetter <methods>;
 	public !static void set?*(***);

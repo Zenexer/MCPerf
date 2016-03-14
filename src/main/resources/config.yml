@@ -7,6 +7,13 @@ entityManager:
   nearbyCreatureLimit: 400
   worldItemLimit: 1000
   worldCreatureLimit: 2000
+chunkManager:
+  enabled: false
+  debugEnabled: false
+  forceUnloadRadius: 8
+  forceUnloadInterval: 300
+  forceUnloadThresholdEnabled: true
+  syncTimeout: 5000  # ms -- advanced setting; don't mess with this
 projectileManager:
   enabled: true
   chunkLoadCleanupEnabled: true

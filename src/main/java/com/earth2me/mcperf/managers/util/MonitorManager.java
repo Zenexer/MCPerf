@@ -1,8 +1,8 @@
 package com.earth2me.mcperf.managers.util;
 
 import com.earth2me.mcperf.managers.Manager;
-import com.earth2me.mcperf.ob.ContainsConfig;
-import com.earth2me.mcperf.ob.Service;
+import com.earth2me.mcperf.annotation.ContainsConfig;
+import com.earth2me.mcperf.annotation.Service;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;

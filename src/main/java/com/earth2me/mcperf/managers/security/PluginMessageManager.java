@@ -2,8 +2,8 @@ package com.earth2me.mcperf.managers.security;
 
 import com.earth2me.mcperf.Util;
 import com.earth2me.mcperf.managers.Manager;
-import com.earth2me.mcperf.ob.ContainsConfig;
-import com.earth2me.mcperf.ob.Service;
+import com.earth2me.mcperf.annotation.ContainsConfig;
+import com.earth2me.mcperf.annotation.Service;
 import com.google.common.base.Joiner;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;

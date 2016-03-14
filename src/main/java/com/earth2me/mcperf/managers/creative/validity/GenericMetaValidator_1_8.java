@@ -271,45 +271,15 @@ public class GenericMetaValidator_1_8 extends GenericMetaValidator {
         }
 
         try {
-            // We can't access NBTNumber for some reason.
-            /*
-            nbtTagCompoundClass = Class.forName("net.minecraft.server" + versionKey + ".NBTTagCompound");
-            nbtTagListClass     = Class.forName("net.minecraft.server" + versionKey + ".NBTTagList");
-            nbtNumberClass      = Class.forName("net.minecraft.server" + versionKey + ".NBTBase.NBTNumber");
-            nbtTagStringClass   = Class.forName("net.minecraft.server" + versionKey + ".NBTTagString");
-            */
-
             unhandledTagsField = craftMetaItemClass.getDeclaredField("unhandledTags");
             for (Field i : new Field[]{
                     unhandledTagsField,
             }) {
                 i.setAccessible(true);
             }
-
-            /*
-            getNumberMethods = new HashMap<>();
-            for (Method method : nbtNumberClass.getDeclaredMethods()) {
-                Class<?> type = method.getReturnType();
-                if (method.getParameterCount() == 0 && getNumberMethods.containsKey(type) && getNumberMethods.get(type) == null) {
-                    method.setAccessible(true);
-                    getNumberMethods.put(type, method);
-                }
-            }
-            for (Map.Entry<Class<?>, Method> entry : getNumberMethods.entrySet()) {
-                if (entry.getValue() == null) {
-                    throw new NoSuchMethodException("Missing method that returns type " + entry.getKey().getName() + " for NBTNumber");
-                }
-            }
-            */
-            //} catch (ClassNotFoundException ex) {
-            //    Bukkit.getLogger().severe("[MCPerf] Couldn't find a required class: " + ex.getMessage());
-            //    return false;
         } catch (NoSuchFieldException ex) {
             Bukkit.getLogger().severe("[MCPerf] Couldn't find a required field: " + ex.getMessage());
             return false;
-            //} catch (NoSuchMethodException ex) {
-            //    Bukkit.getLogger().severe("[MCPerf] Couldn't find a required method: " + ex.getMessage());
-            //    return false;
         }
 
         return true;

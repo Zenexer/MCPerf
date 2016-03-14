@@ -18,19 +18,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MCPerfPlugin extends JavaPlugin {
-    private static ServiceLoader<Manager> loader;
-    private static ClassLoader loaderContext;
+    private ServiceLoader<Manager> loader;
+    private ClassLoader loaderContext;
 
     private final List<Manager> managers = new LinkedList<>();
     private final Set<Manager> registered = new HashSet<>();
 
     private void initLoader() {
-
-
-        initLoader(getClassLoader());
+        initLoader(getClass().getClassLoader());
     }
 
-    private static synchronized void initLoader(ClassLoader classLoader) {
+    private synchronized void initLoader(ClassLoader classLoader) {
         if (loader == null) {
             loaderContext = classLoader;
             loader = ServiceLoader.load(Manager.class, classLoader);
@@ -90,9 +88,20 @@ public class MCPerfPlugin extends JavaPlugin {
         initLoader();
 
         managers.clear();
-        for (Manager manager : loader) {
-            manager.initService(server, logger, this);
-            managers.add(manager);
+
+        Iterator<Manager> iterator = loader.iterator();
+        for (; ; ) {
+            try {
+                if (!iterator.hasNext()) {
+                    break;
+                }
+
+                Manager manager = iterator.next();
+                manager.initService(server, logger, this);
+                managers.add(manager);
+            } catch (ServiceConfigurationError e) {
+                getLogger().warning(String.format("Error while loading managers: %s", e.getMessage()));
+            }
         }
 
         if (managers.isEmpty()) {
@@ -112,19 +121,6 @@ public class MCPerfPlugin extends JavaPlugin {
                 logger.log(Level.SEVERE, "Exception searching path", e);
             }
         }
-
-        /*managers.addAll(Arrays.asList(new Manager[]{
-                new SecurityManager(, server, logger, this),
-                new MonitorManager(, server, logger, this),
-                new EntityManager(, server, logger, this),
-                new ProjectileManager(, server, logger, this),
-                new ValidityManager(, server, logger, this),
-                new PluginMessageManager(, server, logger, this),
-                new ScreeningManager(, server, logger, this),
-                new HeuristicsManager(, server, logger, this),
-                new BlacklistManager(, server, logger, this),
-                new ProxyManager(, server, logger, this),
-        }));*/
 
         loadConfiguration();
 

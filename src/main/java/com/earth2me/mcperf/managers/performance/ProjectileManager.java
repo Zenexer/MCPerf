@@ -3,8 +3,8 @@ package com.earth2me.mcperf.managers.performance;
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
 import com.earth2me.mcperf.managers.Manager;
-import com.earth2me.mcperf.ob.ContainsConfig;
-import com.earth2me.mcperf.ob.Service;
+import com.earth2me.mcperf.annotation.ContainsConfig;
+import com.earth2me.mcperf.annotation.Service;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.World;
@@ -43,9 +43,25 @@ public class ProjectileManager extends Manager {
         resetProjectileCleanupTask();
     }
 
+    @Override
+    protected void onInit() {
+        resetProjectileCleanupTask();
+        super.onInit();
+    }
+
+    @Override
+    protected void onDeinit() {
+        if (projectileCleanupTask != null) {
+            projectileCleanupTask.cancel();
+            projectileCleanupTask = null;
+        }
+
+        super.onDeinit();
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChunkLoad(ChunkLoadEvent event) {
-        if (!chunkLoadCleanupEnabled) {
+        if (!isEnabled() || isChunkLoadCleanupEnabled()) {
             return;
         }
 
@@ -63,6 +79,10 @@ public class ProjectileManager extends Manager {
         if (projectileCleanupTask != null) {
             projectileCleanupTask.cancel();
             projectileCleanupTask = null;
+        }
+
+        if (!isEnabled()) {
+            return;
         }
 
         if (projectileCleanupInterval > 0) {

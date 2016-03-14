@@ -1,10 +1,10 @@
 package com.earth2me.mcperf.compat;
 
 import com.earth2me.mcperf.Util;
+import com.earth2me.mcperf.annotation.NonNull;
+import com.earth2me.mcperf.annotation.Nullable;
 import org.bukkit.Bukkit;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.logging.Level;
 
@@ -19,7 +19,7 @@ public final class Version implements Comparable<Version> {
     private String string;
     private Integer hashCode;
 
-    public Version(@Nonnull int[] components) {
+    public Version(@NonNull int[] components) {
         this(components[0], components[1], components[2], components[3], components[4]);
     }
 
@@ -49,7 +49,7 @@ public final class Version implements Comparable<Version> {
         this.components = new int[] { major, minor, revision, releaseMajor, releaseMinor };
     }
 
-    static void parsePartialVersion(String versionString, String tokenizable, int[] version, int offset, int max) {
+    static void parsePartialVersion(@NonNull String versionString, @NonNull String tokenizable, @NonNull int[] version, int offset, int max) {
         String[] tok = tokenizable.split("\\D+", max + 1);
 
         for (int i = 0; i < tok.length && i < max; i++) {
@@ -66,7 +66,7 @@ public final class Version implements Comparable<Version> {
     }
 
     @Override
-    public int compareTo(@Nonnull Version o) {
+    public int compareTo(@NonNull Version o) {
         for (int i = 0; i < components.length; i++) {
             if (components[i] < o.components[i]) {
                 return -1;
@@ -97,7 +97,7 @@ public final class Version implements Comparable<Version> {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         return obj != null && obj.getClass() == getClass() && equals((Version) obj);
     }
 
@@ -105,23 +105,23 @@ public final class Version implements Comparable<Version> {
         return version != null && compareTo(version) == 0;
     }
 
-    public boolean doesNotEqual(@Nonnull Version version) {
+    public boolean doesNotEqual(@NonNull Version version) {
         return !equals(version);
     }
 
-    public boolean isGreaterThan(@Nonnull Version version) {
+    public boolean isGreaterThan(@NonNull Version version) {
         return compareTo(version) > 0;
     }
 
-    public boolean isLessThan(@Nonnull Version version) {
+    public boolean isLessThan(@NonNull Version version) {
         return compareTo(version) < 0;
     }
 
-    public boolean isGreaterThanOrEqualTo(@Nonnull Version version) {
+    public boolean isGreaterThanOrEqualTo(@NonNull Version version) {
         return compareTo(version) >= 0;
     }
 
-    public boolean isLessThanOrEqualTo(@Nonnull Version version) {
+    public boolean isLessThanOrEqualTo(@NonNull Version version) {
         return compareTo(version) <= 0;
     }
 }
