@@ -1,31 +1,28 @@
 package com.earth2me.mcperf.managers.performance;
 
-import com.earth2me.mcperf.config.ConfigSetting;
-import com.earth2me.mcperf.managers.Manager;
 import com.earth2me.mcperf.annotation.ContainsConfig;
 import com.earth2me.mcperf.annotation.Service;
+import com.earth2me.mcperf.config.ConfigSetting;
+import com.earth2me.mcperf.managers.Manager;
 import com.google.common.collect.Iterables;
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
-import org.bukkit.event.EventException;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.ItemSpawnEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
-import org.bukkit.event.world.ChunkUnloadEvent;
-import org.bukkit.plugin.RegisteredListener;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -36,7 +33,7 @@ public final class EntityManager extends Manager {
     @Getter
     @Setter
     @ConfigSetting
-    private boolean chunkLoadScanningEnabled = false;
+    private boolean chunkLoadScanningEnabled = true;
     @Getter
     @Setter
     @ConfigSetting
@@ -57,6 +54,10 @@ public final class EntityManager extends Manager {
     @Setter
     @ConfigSetting
     private int worldCreatureLimit = 2000;
+    @Getter
+    @Setter
+    @ConfigSetting
+    private Set<EntityType> bannedEntityTypes = Collections.emptySet();
 
     private final AtomicBoolean cleanupRunning = new AtomicBoolean(false);
 
@@ -71,7 +72,6 @@ public final class EntityManager extends Manager {
             case ITEM_FRAME:
             case PAINTING:
             case WEATHER:
-            case AREA_EFFECT_CLOUD:
                 return true;
 
             default:
@@ -83,32 +83,62 @@ public final class EntityManager extends Manager {
         return !isIgnoredEntityType(entity.getType());
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
-        if (event.isCancelled()) {
+        if (!isEnabled() || event.isCancelled()) {
             return;
         }
 
-        if (!canSpawn(event.getLocation(), getNearbyCreatureLimit(), getWorldCreatureLimit())) {
+        if (!canSpawn(event.getEntityType()) || !canSpawn(event.getLocation(), getNearbyCreatureLimit(), getWorldCreatureLimit())) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onItemSpawn(ItemSpawnEvent event) {
-        if (event.isCancelled()) {
+        if (!isEnabled() || event.isCancelled()) {
             return;
         }
 
-        if (!canSpawn(event.getLocation(), getNearbyItemLimit(), getWorldItemLimit())) {
+        if (!canSpawn(event.getEntityType()) || !canSpawn(event.getLocation(), getNearbyItemLimit(), getWorldItemLimit())) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        if (!isEnabled() || event.isCancelled()) {
+            return;
+        }
+
+        if (!canSpawn(event.getEntityType())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChunkLoad(ChunkLoadEvent event) {
+        if (!isEnabled() || !isChunkLoadScanningEnabled()) {
+            return;
+        }
+
         Chunk chunk = event.getChunk();
         Location location = new Location(chunk.getWorld(), chunk.getX() << 4, 0, chunk.getZ() << 4);
+
+        for (Entity entity : chunk.getEntities()) {
+            if (!isBanned(entity.getType())) {
+                continue;
+            }
+
+            if (entity instanceof Player) {
+                Player player = (Player) entity;
+                if (player.isOnline()) {
+                    continue;
+                }
+            }
+
+            entity.remove();
+        }
 
         // These will start cleanups if they fail.
         canSpawn(location, getNearbyCreatureLimit(), getWorldCreatureLimit());
@@ -253,6 +283,14 @@ public final class EntityManager extends Manager {
                 return true;
             }
         }).map(Map.Entry::getKey).collect(Collectors.toList());
+    }
+
+    private boolean isBanned(EntityType type) {
+        return getBannedEntityTypes().contains(type);
+    }
+
+    private boolean canSpawn(EntityType type) {
+        return !isBanned(type);
     }
 
     @SuppressWarnings("RedundantIfStatement")
