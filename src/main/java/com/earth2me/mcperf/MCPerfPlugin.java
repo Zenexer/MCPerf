@@ -10,8 +10,7 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.logging.Level;
@@ -90,6 +89,7 @@ public class MCPerfPlugin extends JavaPlugin {
         managers.clear();
 
         Iterator<Manager> iterator = loader.iterator();
+        boolean errors = false;
         for (; ; ) {
             try {
                 if (!iterator.hasNext()) {
@@ -100,26 +100,19 @@ public class MCPerfPlugin extends JavaPlugin {
                 manager.initService(server, logger, this);
                 managers.add(manager);
             } catch (ServiceConfigurationError e) {
+                errors = true;
                 getLogger().warning(String.format("Error while loading managers: %s", e.getMessage()));
             }
         }
 
         if (managers.isEmpty()) {
+            errors = true;
             logger.log(Level.SEVERE, "No managers were found!");
+        }
 
-            String path = "META-INF/services/" + Manager.class.getName();
-            logger.log(Level.SEVERE, "Searched path: " + path);
-
-            try {
-                Enumeration<URL> urls = loaderContext.getResources(path);
-
-                for (URL url; urls.hasMoreElements(); ) {
-                    url = urls.nextElement();
-                    logger.log(Level.SEVERE, "Resource URL: " + Objects.toString(url));
-                }
-            } catch (IOException e) {
-                logger.log(Level.SEVERE, "Exception searching path", e);
-            }
+        if (errors) {
+            logger.log(Level.SEVERE, "Errors were encountered while loading managers.  Running troubleshooter.");
+            troubleshootLoader();
         }
 
         loadConfiguration();
@@ -127,6 +120,34 @@ public class MCPerfPlugin extends JavaPlugin {
         managers.forEach(Manager::init);
 
         super.onEnable();
+    }
+
+    private void troubleshootLoader() {
+        Logger logger = getLogger();
+
+        String path = "META-INF/services/" + Manager.class.getName();
+        logger.log(Level.SEVERE, "Class loader: " + loaderContext.getClass().getName());
+        logger.log(Level.SEVERE, "Searched path: " + path);
+
+        try {
+            Enumeration<URL> urls = loaderContext.getResources(path);
+
+            for (URL url; urls.hasMoreElements(); ) {
+                url = urls.nextElement();
+                logger.log(Level.SEVERE, "Resource URL: " + Objects.toString(url));
+
+                try (
+                        InputStream in = url.openStream();
+                        BufferedReader rx = new BufferedReader(new InputStreamReader(in, "utf-8"))
+                ) {
+                    for (String line; (line = rx.readLine()) != null; ) {
+                        logger.log(Level.SEVERE, "Service: " + line);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Exception searching path", e);
+        }
     }
 
     @Override

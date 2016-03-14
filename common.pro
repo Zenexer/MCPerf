@@ -65,6 +65,6 @@
 
 ## General ##
 
--dontnote                       com.earth2me.mcperf.managers.creative.validity.MetaValidator
+-dontnote                       com.earth2me.mcperf.managers.creative.validity.GenericMetaValidator_1_8
 -dontnote                       org.hamcrest.**
 -dontnote                       com.earth2me.mcperf.managers.creative.ValidityManager

@@ -64,15 +64,17 @@ public class ConfigHandler {
             generic = fullType.substring(openBracket + 1, fullType.lastIndexOf('>'));
         }
 
-        Class<?> genericClass;
-        try {
-            genericClass = Class.forName(generic);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(String.format("Unexpected setting generic parameter type %s derived from %s for config setting %s; class could not be found", generic, fullType, key), e);
+        Class<?> genericClass = null;
+        if (!generic.isEmpty()) {
+            try {
+                genericClass = Class.forName(generic);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(String.format("Unexpected setting generic parameter type %s derived from %s for config setting %s; class could not be found", generic, fullType, key), e);
+            }
         }
 
         @SuppressWarnings("unchecked")
-        Class<? extends Enum<?>> genericEnumClass = genericClass.isEnum() ? (Class<? extends Enum<?>>) genericClass : null;
+        Class<UnknownEnum> genericEnumClass = genericClass != null && genericClass.isEnum() ? (Class<UnknownEnum>) genericClass : null;
 
         Object value;
 
@@ -106,7 +108,7 @@ public class ConfigHandler {
             case "java.util.HashSet":
             case "java.util.EnumSet":
                 List<?> list;
-                EnumSet<? extends Enum<?>> enumSet = null;
+                EnumSet<UnknownEnum> enumSet = null;
                 switch (generic) {
                     case "java.lang.String":
                         list = config.getStringList(key);
@@ -157,7 +159,7 @@ public class ConfigHandler {
                     default:
                         if (genericEnumClass != null) {
                             List<String> strings = config.getStringList(key);
-                            List<? extends Enum<?>> enumList = strings.stream().<Enum<?>>map(k -> Enum.valueOf(genericEnumClass, k)).collect(Collectors.toList());
+                            List<UnknownEnum> enumList = strings.stream().map(k -> Enum.valueOf(genericEnumClass, k)).collect(Collectors.toList());
                             list = enumList;
 
                             try {
@@ -281,5 +283,8 @@ public class ConfigHandler {
                 field.setAccessible(false);
             }
         }
+    }
+
+    private enum UnknownEnum {
     }
 }

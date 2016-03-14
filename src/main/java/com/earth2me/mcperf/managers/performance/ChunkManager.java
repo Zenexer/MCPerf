@@ -72,7 +72,7 @@ public class ChunkManager extends Manager {
                 getForceUnloadInterval()
         );
 
-        if (scheduler.isCurrentlyRunning(forceUnloadTask.getTaskId())) {
+        if (scheduler.isQueued(forceUnloadTask.getTaskId()) || scheduler.isCurrentlyRunning(forceUnloadTask.getTaskId())) {
             getLogger().info(String.format("[%s] Running chunk cleanup every %d ticks", getId(), getForceUnloadInterval()));
         } else {
             getLogger().severe(String.format("[%s] Failed to schedule chunk cleanup every %d ticks", getId(), getForceUnloadInterval()));
