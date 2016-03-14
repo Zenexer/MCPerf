@@ -17,22 +17,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MCPerfPlugin extends JavaPlugin {
-    private ServiceLoader<Manager> loader;
-    private ClassLoader loaderContext;
-
     private final List<Manager> managers = new LinkedList<>();
     private final Set<Manager> registered = new HashSet<>();
-
-    private void initLoader() {
-        initLoader(getClass().getClassLoader());
-    }
-
-    private synchronized void initLoader(ClassLoader classLoader) {
-        if (loader == null) {
-            loaderContext = classLoader;
-            loader = ServiceLoader.load(Manager.class, classLoader);
-        }
-    }
 
     private FileConfiguration ensureConfig() {
         try {
@@ -65,6 +51,8 @@ public class MCPerfPlugin extends JavaPlugin {
         FileConfiguration yaml = ensureConfig();
         ConfigHandler config = new ConfigHandler(getLogger());
 
+        managers.stream().forEach(Manager::disable);
+
         for (Manager manager : managers) {
             config.apply(yaml, manager);
         }
@@ -84,11 +72,9 @@ public class MCPerfPlugin extends JavaPlugin {
         Server server = getServer();
         Logger logger = getLogger();
 
-        initLoader();
-
         managers.clear();
 
-        Iterator<Manager> iterator = loader.iterator();
+        Iterator<Manager> iterator = ServiceLoader.load(Manager.class, getClass().getClassLoader()).iterator();
         boolean errors = false;
         for (; ; ) {
             try {
@@ -124,6 +110,7 @@ public class MCPerfPlugin extends JavaPlugin {
 
     private void troubleshootLoader() {
         Logger logger = getLogger();
+        ClassLoader loaderContext = getClass().getClassLoader();
 
         String path = "META-INF/services/" + Manager.class.getName();
         logger.log(Level.SEVERE, "Class loader: " + loaderContext.getClass().getName());

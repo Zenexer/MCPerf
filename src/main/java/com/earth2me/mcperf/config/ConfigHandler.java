@@ -73,8 +73,8 @@ public class ConfigHandler {
             }
         }
 
-        @SuppressWarnings("unchecked")
-        Class<UnknownEnum> genericEnumClass = genericClass != null && genericClass.isEnum() ? (Class<UnknownEnum>) genericClass : null;
+        // Despite the name, this must not use generics because Java is stupid.
+        Class genericEnumClass = genericClass != null && genericClass.isEnum() ? genericClass : null;
 
         Object value;
 
@@ -108,7 +108,7 @@ public class ConfigHandler {
             case "java.util.HashSet":
             case "java.util.EnumSet":
                 List<?> list;
-                EnumSet<UnknownEnum> enumSet = null;
+                EnumSet enumSet = null;
                 switch (generic) {
                     case "java.lang.String":
                         list = config.getStringList(key);
@@ -159,7 +159,8 @@ public class ConfigHandler {
                     default:
                         if (genericEnumClass != null) {
                             List<String> strings = config.getStringList(key);
-                            List<UnknownEnum> enumList = strings.stream().map(k -> Enum.valueOf(genericEnumClass, k)).collect(Collectors.toList());
+                            @SuppressWarnings("unchecked")
+                            List enumList = (List) strings.stream().<Enum<?>>map(k -> Enum.valueOf(genericEnumClass, k)).collect(Collectors.toList());
                             list = enumList;
 
                             try {
@@ -283,8 +284,5 @@ public class ConfigHandler {
                 field.setAccessible(false);
             }
         }
-    }
-
-    private enum UnknownEnum {
     }
 }

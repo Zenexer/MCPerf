@@ -16,6 +16,7 @@ public class ServiceLoader<T> implements Iterable<T> {
         return new ServiceLoader<>(serviceType, context);
     }
 
+    @SuppressWarnings("unused")
     public static <T> ServiceLoader<T> load(Class<T> serviceType) {
         return new ServiceLoader<>(serviceType, Thread.currentThread().getContextClassLoader());
     }
@@ -41,6 +42,10 @@ public class ServiceLoader<T> implements Iterable<T> {
             urls = context.getResources(path);
         } catch (IOException e) {
             throw error(e, "Error locating configuration files");
+        }
+
+        if (urls == null) {
+            throw error(null, "ClassLoader#getResources returned null");
         }
 
         return new Iterator<T>() {
@@ -88,6 +93,10 @@ public class ServiceLoader<T> implements Iterable<T> {
             }
 
             private boolean hasNextLine() {
+                if (rx == null) {
+                    return false;
+                }
+
                 String line;
                 do {
                     try {
@@ -115,11 +124,17 @@ public class ServiceLoader<T> implements Iterable<T> {
                     return hasNext;
                 }
 
+                int i = 0;
+
                 while (!hasNextLine()) {
                     if (!hasNextUrl()) {
                         hasNext = false;
                         ranHasNext = true;
                         return false;
+                    }
+
+                    if (i++ > 1024) {
+                        throw error(null, "Looping too much");
                     }
                 }
 
@@ -133,6 +148,7 @@ public class ServiceLoader<T> implements Iterable<T> {
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }
+                ranHasNext = false;
 
                 if (line == null) {
                     throw new IllegalStateException();

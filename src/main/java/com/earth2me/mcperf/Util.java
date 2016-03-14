@@ -1,8 +1,6 @@
 package com.earth2me.mcperf;
 
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Server;
+import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 
 import java.util.logging.Level;
@@ -70,5 +68,10 @@ public class Util {
         }
 
         server.getConsoleSender().sendMessage(message);
+    }
+
+    public static String toString(Location location) {
+        World world = location.getWorld();
+        return String.format("([%s], %.2f, %.2f, %.2f)", world == null ? "?" : world.getName(), location.getX(), location.getY(), location.getZ());
     }
 }
