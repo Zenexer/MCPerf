@@ -67,12 +67,21 @@ public class ProjectileManager extends Manager {
 
         Entity[] entities = event.getChunk().getEntities();
 
-        for (Entity entity : entities) {
-            if (entity instanceof Projectile || entity instanceof Firework) {
-                entity.remove();
-                break;
+        getServer().getScheduler().runTaskAsynchronously(getPlugin(), () -> {
+            List<Entity> removing = new LinkedList<>();
+
+            for (Entity entity : entities) {
+                if (entity instanceof Projectile || entity instanceof Firework) {
+                    removing.add(entity);
+                }
             }
-        }
+
+            if (removing.isEmpty()) {
+                return;
+            }
+
+            getServer().getScheduler().runTask(getPlugin(), () -> removing.forEach(Entity::remove));
+        });
     }
 
     private void resetProjectileCleanupTask() {
@@ -93,7 +102,7 @@ public class ProjectileManager extends Manager {
         }
     }
 
-    public void cleanupProjectiles() {
+    private void cleanupProjectiles() {
         List<World> worlds = getServer().getWorlds();
         final Entity[][] entities = new Entity[worlds.size()][];
 
@@ -194,18 +203,35 @@ public class ProjectileManager extends Manager {
 
                         case UNKNOWN:
                         default:
-                            if (entity instanceof Creature && "CraftCreature".equals(entity.getClass().getSimpleName())) {
-                                // This happens occasionally, for some weird reason.  What sort of creature is it?
-                                // We'll never know.  A placeholder?
-                                continue;
-                            }
+                            // >= 1.9
+                            switch (entity.getType().name()) {
+                                case "SHULKER":
+                                    continue;
 
-                            getLogger().log(Level.WARNING, "Unknown entity type: " + entity.getClass().getCanonicalName());
+                                case "AREA_EFFECT_CLOUD":
+                                    maxAge = 60 * 20;
+                                    break;
 
-                            if (entity instanceof Projectile) {
-                                maxAge = 20 * 20;
-                            } else {
-                                continue;
+                                case "SHULKER_BULLET":
+                                case "SPECTRAL_ARROW":
+                                    maxAge = 20 * 20;
+                                    break;
+
+                                default:
+                                    if (entity instanceof Creature && "CraftCreature".equals(entity.getClass().getSimpleName())) {
+                                        // This happens occasionally, for some weird reason.  What sort of creature is it?
+                                        // We'll never know.  A placeholder?
+                                        continue;
+                                    }
+
+                                    getLogger().log(Level.WARNING, "Unknown entity type: " + entity.getClass().getCanonicalName());
+
+                                    if (entity instanceof Projectile) {
+                                        maxAge = 20 * 20;
+                                        break;
+                                    } else {
+                                        continue;
+                                    }
                             }
                             break;
                     }

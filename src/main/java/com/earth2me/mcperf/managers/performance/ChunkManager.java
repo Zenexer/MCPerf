@@ -101,7 +101,8 @@ public class ChunkManager extends Manager {
         }
 
         int playerViewSize = forceUnloadRadius * forceUnloadRadius;
-        int spawnSize = playerViewSize * 2;
+        @SuppressWarnings("UnnecessaryLocalVariable")
+        int spawnSize = playerViewSize;
         int forceUnloadPlayerOverlap = 2;
         int radius = forceUnloadRadius;
 
@@ -111,10 +112,11 @@ public class ChunkManager extends Manager {
             for (World world : worlds) {
                 Chunk[] chunks = sync(world::getLoadedChunks);
                 List<Player> players = sync(() -> new ArrayList<>(world.getPlayers()));
+                int allowedChunks = playerViewSize * players.size() / forceUnloadPlayerOverlap + spawnSize;
 
-                if (forceUnloadThresholdEnabled && chunks.length - spawnSize < playerViewSize * players.size() / forceUnloadPlayerOverlap) {
+                if (forceUnloadThresholdEnabled && chunks.length < allowedChunks) {
                     if (debugEnabled) {
-                        getLogger().info(String.format("[%s] Skipping world %s", getId(), world.getName()));
+                        getLogger().info(String.format("[%s] Skipping world %s with %d of %d allowed chunks", getId(), world.getName(), chunks.length, allowedChunks));
                     }
                     continue;
                 }
@@ -157,7 +159,10 @@ public class ChunkManager extends Manager {
                         int diffZ = Math.abs(chunkZ - viewerZ);
 
                         if (diffX <= radius && diffZ <= radius) {
-                            break chunk;
+                            //if (i++ < 3) {
+                            //    getLogger().info(String.format("[%s] |%d - %d| = %d;  |5d - %d| = %d", getId(), chunkX, viewerX, diffX, chunkZ, viewerZ, diffZ));
+                            //}
+                            continue chunk;
                         }
                     }
 
@@ -166,13 +171,13 @@ public class ChunkManager extends Manager {
 
                 if (unloadChunks.isEmpty()) {
                     if (debugEnabled) {
-                        getLogger().info(String.format("[%s] Didn't find any chunks that need to be unloaded", getId()));
+                        getLogger().info(String.format("[%s] Found %d out of %d chunks that need to be unloaded; not scheduling unload task", getId(), unloadChunks.size(), chunks.length));
                     }
                     continue;
                 }
 
                 if (debugEnabled) {
-                    getLogger().info(String.format("[%s] Found chunks that need to be unloaded; scheduling for unload", getId()));
+                    getLogger().info(String.format("[%s] Found %d out of %d chunks that need to be unloaded; scheduling for unload", getId(), unloadChunks.size(), chunks.length));
                 }
 
                 scheduler.scheduleSyncDelayedTask(getPlugin(), () -> {
