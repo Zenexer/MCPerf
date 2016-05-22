@@ -15,6 +15,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 
 public class MCPerfPlugin extends JavaPlugin {
     private final List<Manager> managers = new LinkedList<>();
@@ -195,6 +196,29 @@ public class MCPerfPlugin extends JavaPlugin {
 
             default:
                 return false;
+        }
+    }
+
+    public final class IntIterator implements Iterator<Integer> {
+        private final int[] arr;
+        private int i = 0;
+
+        public IntIterator(int[] arr) {
+            this.arr = arr;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < arr.length;
+        }
+
+        @Override
+        public Integer next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+
+            return arr[i++];
         }
     }
 }

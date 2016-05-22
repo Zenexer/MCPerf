@@ -19,6 +19,9 @@ import org.bukkit.plugin.RegisteredListener;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -51,6 +54,8 @@ public class ChunkManager extends Manager {
     @ConfigSetting
     private int syncTimeout = 5_000;  // ms
 
+    private MethodHandle mUnloadChunk0;
+    private Method mUnloadChunk0_;
     private BukkitTask forceUnloadTask = null;
     private BukkitScheduler scheduler;
 
@@ -192,8 +197,39 @@ public class ChunkManager extends Manager {
                             getLogger().info(String.format("[%s] Unloading chunk from %s at (%d, %d)", getId(), chunk.getWorld().getName(), chunk.getX(), chunk.getZ()));
                         }
 
-                        if (!chunk.unload(true, false)) {
-                            getLogger().info(String.format("[%s] Failed to unload chunk from %s at (%d, %d)", getId(), chunk.getWorld().getName(), chunk.getX(), chunk.getZ()));
+                        if (mUnloadChunk0 == null) {
+                            try {
+                                MethodHandles.Lookup lookup = MethodHandles.lookup();
+                                Method method = world.getClass().getDeclaredMethod("unloadChunk0", Integer.TYPE, Integer.TYPE, Boolean.TYPE, Boolean.TYPE);
+                                method.setAccessible(true);
+                                mUnloadChunk0_ = method;
+                                mUnloadChunk0 = lookup.unreflect(method);
+                            } catch (NoSuchMethodException e) {
+                                getLogger().log(Level.SEVERE, String.format("[%s] Failed to retrieve method unloadChunk0 via reflection.  Class: %s", getId(), world.getClass().getName()), e);
+                            } catch (IllegalAccessException e) {
+                                getLogger().log(Level.SEVERE, String.format("[%s] Failed to retrieve method unloadChunk0 via invokedynamic", getId()), e);
+                            }
+                        }
+
+                        if (!chunk.unload(true) && mUnloadChunk0 != null) {
+                            try {
+                                // This redundant madness is to please the ProGuard gods.
+                                boolean result = (boolean) mUnloadChunk0.invoke(world, chunk.getX(), chunk.getZ(), true, false);
+                                if (result) {
+                                    continue;
+                                }
+
+                                result = (boolean) mUnloadChunk0_.invoke(world, chunk.getX(), chunk.getZ(), true, false);
+                                if (result) {
+                                    continue;
+                                }
+                            } catch (Throwable throwable) {
+                                getLogger().log(Level.WARNING, String.format("[%s] Spigot's unloadChunk0 threw an exception", getId()), throwable);
+                            }
+
+                            if (debugEnabled) {
+                                getLogger().warning(String.format("[%s] Failed to unload chunk from %s at (%d, %d)", getId(), chunk.getWorld().getName(), chunk.getX(), chunk.getZ()));
+                            }
                         }
                     }
                 });
@@ -211,7 +247,7 @@ public class ChunkManager extends Manager {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkUnload(ChunkUnloadEvent event) {
         if (!isEnabled() || !isDebugEnabled() || !event.isCancelled()) {
             return;
