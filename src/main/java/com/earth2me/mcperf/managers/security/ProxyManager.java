@@ -3,6 +3,7 @@ package com.earth2me.mcperf.managers.security;
 import com.earth2me.mcperf.Util;
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
+import com.earth2me.mcperf.integration.ban.BanIntegration;
 import com.earth2me.mcperf.managers.Manager;
 import com.earth2me.mcperf.ob.ContainsConfig;
 import com.earth2me.mcperf.ob.Service;
@@ -22,6 +23,7 @@ import org.bukkit.scheduler.BukkitTask;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -41,6 +43,11 @@ public class ProxyManager extends Manager {
             500,   // VPN: IKEv1/v2 (normally UDP, but PIA also has TCP open)
             1080,  // SOCKS
             1723,  // VPN: PPTP
+            8080,  // Mostly web proxies, but often multiple protocols supported
+
+            // Specific proxy service used by mystario
+            1023,
+            1119,
     };
     @SuppressWarnings("MismatchedReadAndWriteOfArray")
     @Getter
@@ -60,6 +67,14 @@ public class ProxyManager extends Manager {
     @Getter
     @ConfigSetting
     private int threadPoolSize = 18;
+    @Getter
+    @Setter
+    @ConfigSetting
+    private String wtfastCaughtAction = "kick";
+    @Getter
+    @Setter
+    @ConfigSetting
+    private String wtfastCaughtReason = "WTFast VPN service";
 
     private volatile ExecutorService executorService;
 
@@ -215,6 +230,22 @@ public class ProxyManager extends Manager {
 
                 if (ifProxy != null) {
                     ifProxy.accept(openPorts);
+                }
+
+                if (openPorts.size() < getTcpPorts().length && openPorts.containsAll(Arrays.asList("1023/tcp", "1119/tcp"))) {
+                    sendAlert("%s is using WTFast, a VPN service", player.getName());
+
+                    if (getWtfastCaughtAction() != null) {
+                        switch (getWtfastCaughtAction().toLowerCase()) {
+                            case "kick":
+                                player.kickPlayer(getWtfastCaughtReason());
+                                break;
+
+                            case "ban":
+                                BanIntegration.get().ban(player, getWtfastCaughtReason());
+                                break;
+                        }
+                    }
                 }
             }
         });

@@ -33,6 +33,10 @@
 			<id>ess-repo</id>
 			<url>http://repo.ess3.net/content/groups/public</url>
 		</repository-->
+		<repository>
+			<id>confuser-repo</id>
+			<url>http://ci.frostcast.net/plugin/repository/everything</url>
+		</repository>
 	</repositories>
 
 	<distributionManagement>
@@ -58,6 +62,11 @@
 			<artifactId>netty-buffer</artifactId>
 			<version>4.0.25.Final</version>
 			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>me.confuser</groupId>
+			<artifactId>BanManager</artifactId>
+			<version>5.9.0</version>
 		</dependency>
 	</dependencies>
 

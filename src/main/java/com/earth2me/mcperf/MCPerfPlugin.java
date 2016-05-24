@@ -1,6 +1,7 @@
 package com.earth2me.mcperf;
 
 import com.earth2me.mcperf.config.ConfigHandler;
+import com.earth2me.mcperf.integration.ban.BanIntegration;
 import com.earth2me.mcperf.managers.Manager;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
@@ -25,8 +26,6 @@ public class MCPerfPlugin extends JavaPlugin {
     private final Set<Manager> registered = new HashSet<>();
 
     private void initLoader() {
-
-
         initLoader(getClassLoader());
     }
 
@@ -88,6 +87,8 @@ public class MCPerfPlugin extends JavaPlugin {
         Logger logger = getLogger();
 
         initLoader();
+
+        BanIntegration.init(server, logger);
 
         managers.clear();
         for (Manager manager : loader) {

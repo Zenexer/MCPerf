@@ -63,6 +63,8 @@ proxyManager:
   enabled: false
   threadPoolSize: 15  # Calculation: Max players connecting per tcpTimeout milliseconds times number of tcpPorts
   tcpTimeout: 1000  # Milliseconds (1000 ms = 1 sec)
+  wtfastCaughtAction: kick  # kick, ban, null
+  wtfastCaughtReason: 'WTFast VPN service'
   tcpPorts:
     - 22
     - 53
@@ -70,3 +72,6 @@ proxyManager:
     - 500
     - 1080
     - 1723
+    # WTFast VPN service--detection requires these two ports plus at least one other
+    - 1023
+    - 1119
