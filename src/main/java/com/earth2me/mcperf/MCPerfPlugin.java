@@ -3,6 +3,7 @@ package com.earth2me.mcperf;
 import com.earth2me.mcperf.config.ConfigHandler;
 import com.earth2me.mcperf.integration.ban.BanIntegration;
 import com.earth2me.mcperf.managers.Manager;
+import com.earth2me.mcperf.util.concurrent.Tasks;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -88,6 +89,7 @@ public class MCPerfPlugin extends JavaPlugin {
 
         initLoader();
 
+        Tasks.init(server, this);
         BanIntegration.init(server, logger);
 
         managers.clear();
@@ -139,7 +141,8 @@ public class MCPerfPlugin extends JavaPlugin {
         managers.forEach(Manager::disable);
         managers.clear();
 
-        getServer().getScheduler().cancelTasks(this);
+        BanIntegration.deinit();
+        Tasks.deinit();
 
         super.onDisable();
     }

@@ -63,15 +63,18 @@ proxyManager:
   enabled: false
   threadPoolSize: 15  # Calculation: Max players connecting per tcpTimeout milliseconds times number of tcpPorts
   tcpTimeout: 1000  # Milliseconds (1000 ms = 1 sec)
-  wtfastCaughtAction: kick  # kick, ban, null
-  wtfastCaughtReason: 'WTFast VPN service'
-  tcpPorts:
-    - 22
-    - 53
-    - 80
-    - 500
-    - 1080
-    - 1723
-    # WTFast VPN service--detection requires these two ports plus at least one other
-    - 1023
-    - 1119
+  vulnScannerEnabled: false  # Will scan for and alert players of potential vulnerabilities on their network.
+  tcpPorts: []  # Extra TCP ports to scan.  Known services will be scanned automatically.
+  knownServiceCommands:  # Run if a known proxy/VPN service is detected with high confidence.
+    # %1$s = username
+    # %2$s = IP address
+    # %3$s = service detected
+    - "tempban %1$s 1d [MCPerf] We don't allow proxies/VPNs."
+  suspiciousCommands:  # Run if there is the player is most likely using a proxy/VPN.
+    # %1$s = username
+    # %2$s = IP address
+    # %3$s = service detected
+    - "tempban %1$s 5m [MCPerf] You appear to be using a proxy/VPN. If this is incorrect, contact support."
+  whitelist: # Usernames; must be all-lowercase
+    - lizchlops  # Father is an engineer; has DD-WRT + VPN; confirmed by talking to father
+    - kaichlops  # Also used by LizChlops

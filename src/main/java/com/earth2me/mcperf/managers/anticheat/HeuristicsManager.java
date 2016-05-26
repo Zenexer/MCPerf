@@ -503,7 +503,6 @@ public final class HeuristicsManager extends Manager {
             return;
         }
 
-
         List<String> commands = getCommands();
         if (commands != null) {
             for (String command : commands) {

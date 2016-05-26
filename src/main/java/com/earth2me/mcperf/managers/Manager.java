@@ -6,6 +6,7 @@ import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
 import com.earth2me.mcperf.config.Configurable;
 import com.earth2me.mcperf.ob.ContainsConfig;
+import com.earth2me.mcperf.util.concurrent.Tasks;
 import lombok.Getter;
 import org.bukkit.Server;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -13,6 +14,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 
 import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
@@ -128,12 +130,30 @@ public abstract class Manager implements Listener, Configurable {
         enabled = false;
     }
 
-    public void dispatchCommand(String command) {
+    protected void dispatchCommand(String command) {
+        if (command.isEmpty()) {
+            return;
+        }
+
         getServer().dispatchCommand(getCommandSender(), command);
     }
 
-    public void dispatchCommand(String format, Object... args) {
+    protected void dispatchCommand(String format, Object... args) {
         dispatchCommand(String.format(format, args));
+    }
+
+    protected void dispatchCommands(List<String> commands, Object... args) {
+        if (commands == null) {
+            return;
+        }
+
+        for (String command : commands) {
+            dispatchCommand(command, args);
+        }
+    }
+
+    protected void dispatchCommandsAsync(List<String> commands, Object... args) {
+        Tasks.sync(() -> dispatchCommands(commands, args));
     }
 
     protected void println(String format, Object... args) {

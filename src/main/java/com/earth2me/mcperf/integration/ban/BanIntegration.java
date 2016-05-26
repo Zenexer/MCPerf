@@ -26,6 +26,16 @@ public abstract class BanIntegration {
         BanIntegration.logger = logger;
     }
 
+    public static void deinit() {
+        if (instance != null) {
+            instance.onDisable();
+        }
+
+        instance = null;
+        server = null;
+        logger = null;
+    }
+
     public static BanIntegration get() {
         if (instance == null) {
             try {
@@ -36,6 +46,9 @@ public abstract class BanIntegration {
         }
 
         return instance;
+    }
+
+    protected void onDisable() {
     }
 
     public void ban(Player player, String reason) {

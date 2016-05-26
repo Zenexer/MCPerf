@@ -3,11 +3,15 @@ package com.earth2me.mcperf.managers.security;
 import com.earth2me.mcperf.Util;
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
-import com.earth2me.mcperf.integration.ban.BanIntegration;
 import com.earth2me.mcperf.managers.Manager;
 import com.earth2me.mcperf.ob.ContainsConfig;
 import com.earth2me.mcperf.ob.Service;
+import com.earth2me.mcperf.util.Tuple;
+import com.earth2me.mcperf.util.concurrent.Callback;
+import com.earth2me.mcperf.util.concurrent.Tasks;
+import lombok.Data;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -20,46 +24,46 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.io.IOException;
+import java.net.*;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 @Service
 @ContainsConfig
-public class ProxyManager extends Manager {
-    @SuppressWarnings("MismatchedReadAndWriteOfArray")  // IntelliJ is being stupid; remove later
-    @Getter
-    @Setter
-    @ConfigSetting
-    // Not safe to alter; only safe to assign
-    private int[] tcpPorts = {
-            22,
-            500,   // VPN: IKEv1/v2 (normally UDP, but PIA also has TCP open)
-            1080,  // SOCKS
-            1723,  // VPN: PPTP
-            8080,  // Mostly web proxies, but often multiple protocols supported
+public final class ProxyManager extends Manager {
+    // Order matters.
+    @SuppressWarnings("RedundantArrayCreation")
+    private static final List<Service> knownServices = Collections.unmodifiableList(Arrays.asList(new Service[] {
+            new Service("WTFast", 1023, 1119),
+            new Service("Hotspot Shield", 80, 1723, 5050, 9000),
+            new Service("PIA", 500, 1723),
 
-            // Specific proxy service used by mystario
-            1023,
-            1119,
-    };
-    @SuppressWarnings("MismatchedReadAndWriteOfArray")
+            new Service("unidentified shell", 1723, 8099),
+    }));
+    // Order matters.
+    @SuppressWarnings("RedundantArrayCreation")
+    private static final List<Service> suspiciousServices = Collections.unmodifiableList(Arrays.asList(new Service[] {
+            new Service("generic PPTP #1", new Integer[] { 1723, 22 }, new Integer[] {
+                    8888,  // DD-WRT
+            }),
+            new Service("generic PPTP #2", 1723, 53),
+            new Service("generic PPTP #3", 1723, 443),
+
+            new Service("generic SOCKS #1", 1080, 22),
+            new Service("generic SOCKS #2", 1080, 53),
+            new Service("generic SOCKS #3", 1080, 80),
+    }));
+
     @Getter
-    @Setter
     @ConfigSetting
-    // Not used yet
     // Not safe to alter; only safe to assign
-    private int[] udpPorts =  {
-            500,   // VPN: IKEv1
-            1701,  // VPN: L2TP
-            4500,  // VPN: IKEv1/v2
-    };
+    // For future
+    private Set<Integer> tcpPorts = Collections.emptySet();
     @Getter
     @Setter
     @ConfigSetting
@@ -70,16 +74,48 @@ public class ProxyManager extends Manager {
     @Getter
     @Setter
     @ConfigSetting
-    private String wtfastCaughtAction = "kick";
+    private boolean vulnScannerEnabled = false;
     @Getter
     @Setter
     @ConfigSetting
-    private String wtfastCaughtReason = "WTFast VPN service";
+    private List<String> knownServiceCommands = Collections.singletonList("tempban %1$s 1d [MCPerf] We don't allow proxies/VPNs.");
+    @Getter
+    @Setter
+    @ConfigSetting
+    private List<String> suspiciousCommands = Collections.singletonList("tempban %1$s 5m [MCPerf] You appear to be using a proxy/VPN. If this is incorrect, contact support.");
+    @SuppressWarnings("SpellCheckingInspection")
+    @Getter
+    @Setter
+    @ConfigSetting
+    private Set<String> whitelist = new HashSet<>(Arrays.asList(new String[] {
+            // Must be lowercase.
+
+            "lizchlops",  // Father is an engineer; has DD-WRT + VPN; confirmed by talking to father.
+                          // Triggered by {1723, 22}.  Exclusion of 8888 fixes, but whitelist just in case.
+            "kaichlops",  // Shared by LizChlops.
+    }));
 
     private volatile ExecutorService executorService;
 
     public ProxyManager() {
         super("MjEbcHJveHkK");
+    }
+
+    @ConfigSettingSetter
+    @SuppressWarnings("RedundantArrayCreation")  // Allows us to have comma after last entry
+    public void setTcpPorts(Set<Integer> tcpPorts) {
+        tcpPorts = new HashSet<>(tcpPorts);
+        tcpPorts.add(1);  // Ensure that the user doesn't have (almost) all ports open
+
+        for (Service service : knownServices) {
+            tcpPorts.addAll(service.includePorts);
+        }
+
+        for (Service service : suspiciousServices) {
+            tcpPorts.addAll(service.includePorts);
+        }
+
+        this.tcpPorts = Collections.unmodifiableSet(tcpPorts);
     }
 
     @Override
@@ -171,7 +207,7 @@ public class ProxyManager extends Manager {
     public BukkitTask scanPlayer(Player player, Consumer<List<String>> ifProxy, Runnable ifNotProxy) {
         InetAddress addr = player.getAddress().getAddress();
         int tcpTimeout = getTcpTimeout();
-        int[] tcpPorts = getTcpPorts();
+        Set<Integer> tcpPorts = getTcpPorts();
         BukkitScheduler scheduler = getServer().getScheduler();
         Plugin plugin = getPlugin();
 
@@ -182,21 +218,22 @@ public class ProxyManager extends Manager {
         ExecutorService executorService = this.executorService;
 
         return scheduler.runTaskAsynchronously(plugin, () -> {
-            List<Future<Boolean>> tasks = new LinkedList<>();
+            List<Tuple<Integer, Future<Boolean>>> tasks = new LinkedList<>();
 
             try {
-                for (int port : tcpPorts) {
-                    tasks.add(scanTcpPort(executorService, addr, port, tcpTimeout));
-                }
+                tasks.addAll(tcpPorts.stream().map(
+                        port -> new Tuple<>(port, scanTcpPort(executorService, addr, port, tcpTimeout))
+                ).collect(Collectors.toList()));
             } catch (RejectedExecutionException e) {
                 return;
             }
 
             List<String> openPorts = new LinkedList<>();
+            Set<Integer> openTcp = new HashSet<>();
             try {
-                int i = 0;
-                for (Future<Boolean> task : tasks) {
-                    int port = tcpPorts[i++];
+                for (Tuple<Integer, Future<Boolean>> t : tasks) {
+                    int port = t.getA();
+                    Future<Boolean> task = t.getB();
 
                     Boolean open;
                     try {
@@ -212,6 +249,7 @@ public class ProxyManager extends Manager {
                     }
 
                     if (open != null && open) {
+                        openTcp.add(port);
                         openPorts.add(String.format("%d/tcp", port));
                     }
                 }
@@ -225,29 +263,267 @@ public class ProxyManager extends Manager {
                 if (ifNotProxy != null) {
                     ifNotProxy.run();
                 }
-            } else {
-                getLogger().log(Level.INFO, String.format("Open proxy ports for player %s: %s", player.getName(), String.join(", ", openPorts)));
+                return;
+            }
 
-                if (ifProxy != null) {
-                    ifProxy.accept(openPorts);
-                }
+            getLogger().log(Level.INFO, String.format("Open proxy ports for player %s: %s", player.getName(), String.join(", ", openPorts)));
 
-                if (openPorts.size() < getTcpPorts().length && openPorts.containsAll(Arrays.asList("1023/tcp", "1119/tcp"))) {
-                    sendAlert("%s is using WTFast, a VPN service", player.getName());
+            if (ifProxy != null) {
+                ifProxy.accept(openPorts);
+            }
 
-                    if (getWtfastCaughtAction() != null) {
-                        switch (getWtfastCaughtAction().toLowerCase()) {
-                            case "kick":
-                                player.kickPlayer(getWtfastCaughtReason());
-                                break;
+            if (openPorts.size() >= tcpPorts.size() - 3) {
+                getLogger().log(Level.INFO, String.format("Player %s appears to have all ports open.", player.getName()));
+                return;
+            }
 
-                            case "ban":
-                                BanIntegration.get().ban(player, getWtfastCaughtReason());
-                                break;
-                        }
-                    }
-                }
+            checkServices(player, openTcp);
+
+            if (isVulnScannerEnabled()) {
+                Tasks.async(() -> checkVulns(player, openTcp));
             }
         });
+    }
+
+    private void checkServices(Player player, Set<Integer> openTcp) {
+        for (Service service : knownServices) {
+            if (checkService(player, openTcp, service, true)) {
+                return;
+            }
+        }
+
+        for (Service service : suspiciousServices) {
+            if (checkService(player, openTcp, service, false)) {
+                return;
+            }
+        }
+    }
+
+    private boolean checkService(Player player, Set<Integer> openTcp, Service service, boolean confident) {
+        if (!openTcp.containsAll(service.includePorts) || openTcp.stream().anyMatch(service.excludePorts::contains)) {
+            return false;
+        }
+
+        boolean whitelisted = getWhitelist().contains(player.getName().toLowerCase());
+        boolean banned = player.isBanned();
+
+        sendAlert(
+                "%s %s using a proxy/VPN: %s%s",
+                player.getName(),
+                confident ? "is" : "might be",
+                service.name,
+                whitelisted ? "; however, they are whitelisted" :
+                banned ? "; however, they are already banned" : ""
+        );
+
+        if (!whitelisted && !banned) {
+            dispatchCommandsAsync(
+                    confident ? getKnownServiceCommands() : getSuspiciousCommands(),
+                    player.getName(),
+                    player.getAddress().getAddress().getHostAddress(),
+                    service.name
+            );
+        }
+        return true;
+    }
+
+    private void requestHttp(Player player, int port, boolean secure, Callback<HttpResponse> callback) {
+        Tasks.async(() -> {
+            HttpResponse response = requestHttp(player, port, secure, "GET", "/");
+
+            if (response != null) {
+                Tasks.async(() -> callback.call(response));
+            }
+        });
+    }
+
+    private HttpResponse requestHttp(Player player, int port, boolean secure, String method, String uri) {
+        if (!uri.startsWith("/")) {
+            uri = "/" + uri;
+        }
+
+        URL url;
+        try {
+            url = new URL(String.format(
+                    "%s://%s:%d%s",
+                    secure ? "https" : "http",
+                    player.getAddress().getAddress().getHostAddress(),
+                    port,
+                    uri
+            ));
+        } catch (MalformedURLException e) {
+            getLogger().log(Level.WARNING, "Invalid URL", e);
+            return null;
+        }
+
+        HttpURLConnection conn;
+        try {
+            conn = (HttpURLConnection) url.openConnection();
+        } catch (IOException e) {
+            getLogger().log(Level.FINEST, "HTTP connection failed to initialize", e);
+            return null;
+        }
+
+        try {
+            conn.setRequestMethod(method);
+        } catch (ProtocolException e) {
+            getLogger().log(Level.WARNING, "HTTP protocol error", e);
+            return null;
+        }
+
+        conn.setInstanceFollowRedirects(false);
+        conn.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        conn.setRequestProperty("Accept-Language", "en-US,en;q=0.8");
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (compatible; Minecraft-Open-Proxy-Monitor)");
+        conn.setRequestProperty("X-Purpose", "Ensures players are not connecting from proxies, VPNs, or insecure computers");
+        conn.setUseCaches(false);
+        conn.setReadTimeout(getTcpTimeout());  // TODO Separate setting, perhaps?
+        conn.setConnectTimeout(getTcpTimeout()); // TODO Separate setting, perhaps?
+        conn.setDoOutput(true);
+        conn.setDoInput(false);
+
+        try {
+            return HttpResponse.get(conn);
+        } catch (SocketTimeoutException e) {
+            getLogger().log(Level.FINEST, "HTTP connection attempt timed out", e);
+            return null;
+        } catch (IOException e) {
+            getLogger().log(Level.FINEST, "Failed to establish HTTP connection", e);
+            return null;
+        }
+    }
+
+    @SuppressWarnings("CodeBlock2Expr")
+    private void checkVulns(Player player, Set<Integer> openTcp) {
+        {
+            Warner warner = new Warner(player, 80);
+            if (warner.isValid(openTcp)) {
+                requestHttp(player, warner.port, false, (r) -> {
+                    warner.vuln(true, "VMAX Web Viewer default credentials", "http://bit.ly/22pPyRn", r.getStatus() == 200 && r.serverEquals("Boa/0.94.13"));
+                });
+            }
+        }
+
+        {
+            Warner warner = new Warner(player, 443);
+            if (warner.isValid(openTcp)) {
+                // Note that this is not HTTPS!
+                requestHttp(player, warner.port, false, (r) -> {
+                    warner.vuln(false, "Exposed DNR-202L", "Device is accessible from the internet.", r.serverStartsWith("Embedthis-Appweb/") && r.headerContains("www-authenticate", "realm=\"DNR-202L\""));
+                });
+            }
+        }
+    }
+
+    private static class Service {
+        public final String name;
+        public final Set<Integer> includePorts;
+        public final Set<Integer> excludePorts;
+
+        private Service(String name, Integer... includePorts) {
+            this.name = name;
+            this.includePorts = new HashSet<>(Arrays.asList(includePorts));
+            this.excludePorts = Collections.emptySet();
+        }
+        private Service(String name, Integer[] includePorts, Integer[] excludePorts) {
+            this.name = name;
+            this.includePorts = new HashSet<>(Arrays.asList(includePorts));
+            this.excludePorts = new HashSet<>(Arrays.asList(excludePorts));
+        }
+    }
+
+    @RequiredArgsConstructor
+    private class Warner {
+        public final Player player;
+        public final int port;
+
+        public boolean isValid(Set<Integer> openTcp) {
+            return openTcp.contains(port);
+        }
+
+        private void vuln(boolean warn, String name, String details, boolean condition) {
+            if (!condition) {
+                return;
+            }
+
+            String message = String.format(
+                    "Vulnerability: %s\n"
+                    + "Port: %d/tcp\n"
+                    + "Details: %s\n"
+                    + "Note: This feature is still in development and may be inaccurate.",
+                    name,
+                    port,
+                    details
+            );
+
+            Tasks.sync(() -> {
+                if (warn) {
+                    player.sendMessage("A potential security vulnerability was detected on your network while checking for proxies/VPNs.\n" + message);
+                }
+
+                sendNotice("Potential vulnerability for player %s: %s", player.getName(), message);
+            });
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Data
+    private static class HttpResponse {
+        private final int status;
+        private final String statusMessage;
+        @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")  // IntelliJ being stupid
+        private final Map<String, List<String>> headers;
+        private final String content;
+
+        public static HttpResponse get(HttpURLConnection connection) throws IOException {
+            connection.connect();
+
+            return new HttpResponse(
+                    connection.getResponseCode(),
+                    connection.getResponseMessage(),
+                    normalizeHeaders(connection.getHeaderFields()),
+                    connection.getContentLength() <= 300 * 1024 * 1024
+                            ? (String) connection.getContent(new Class[] { String.class })
+                            : null
+            );
+        }
+
+        private static Map<String, List<String>> normalizeHeaders(Map<String, List<String>> dirty) {
+            Map<String, List<String>> normalized = new HashMap<>();
+
+            for (Map.Entry<String, List<String>> kv : dirty.entrySet()) {
+                normalized.put(kv.getKey().toLowerCase(), kv.getValue());
+            }
+
+            return Collections.unmodifiableMap(normalized);
+        }
+
+        public List<String> getHeader(String key) {
+            return headers.get(key.toLowerCase());
+        }
+
+        public boolean headerMatches(String header, Predicate<String> match) {
+            return getHeader(header).stream().anyMatch(match);
+        }
+
+        public boolean headerContains(String header, String s) {
+            return headerMatches(header, h -> h.contains(s));
+        }
+
+        public boolean serverMatches(Predicate<String> match) {
+            return headerMatches("server", match);
+        }
+
+        public boolean serverStartsWith(String prefix) {
+            return headerMatches("server", h -> h.startsWith(prefix));
+        }
+
+        public boolean serverEquals(String s) {
+            return headerMatches("server", s::equals);
+        }
+
+        public boolean contentContains(String s) {
+            return getContent().contains(s);
+        }
     }
 }
