@@ -90,9 +90,12 @@ public final class ProxyManager extends Manager {
     private Set<String> whitelist = new HashSet<>(Arrays.asList(new String[] {
             // Must be lowercase.
 
-            "lizchlops",  // Father is an engineer; has DD-WRT + VPN; confirmed by talking to father.
-                          // Triggered by {1723, 22}.  Exclusion of 8888 fixes, but whitelist just in case.
-            "kaichlops",  // Shared by LizChlops.
+            "lizchlops",          // Father is an engineer; has DD-WRT + VPN; confirmed by talking to father.
+                                  // Triggered by {1723, 22}.  Exclusion of 8888 fixes, but whitelist just in case.
+            "kaichlops",          // Shared by LizChlops.
+            "crazyviolin",        // Sibling of LizChlops.
+            "xvinyl_scratchx",    // /alts for LizChlops
+            "xxrainbow_dashxx",   // /alts for LizChlops
     }));
 
     private volatile ExecutorService executorService;
@@ -109,10 +112,12 @@ public final class ProxyManager extends Manager {
 
         for (Service service : knownServices) {
             tcpPorts.addAll(service.includePorts);
+            tcpPorts.addAll(service.excludePorts);
         }
 
         for (Service service : suspiciousServices) {
             tcpPorts.addAll(service.includePorts);
+            tcpPorts.addAll(service.excludePorts);
         }
 
         this.tcpPorts = Collections.unmodifiableSet(tcpPorts);
@@ -266,14 +271,23 @@ public final class ProxyManager extends Manager {
                 return;
             }
 
-            getLogger().log(Level.INFO, String.format("Open proxy ports for player %s: %s", player.getName(), String.join(", ", openPorts)));
+            getLogger().log(Level.INFO, String.format(
+                    "Open %s ports for player %s: %s",
+                    openPorts.stream().allMatch(p -> p.startsWith("80/") || p.startsWith("443/")) ? "web" : "proxy",
+                    player.getName(),
+                    String.join(", ", openPorts)
+            ));
 
             if (ifProxy != null) {
                 ifProxy.accept(openPorts);
             }
 
             if (openPorts.size() >= tcpPorts.size() - 3) {
-                getLogger().log(Level.INFO, String.format("Player %s appears to have all ports open.", player.getName()));
+                getLogger().log(Level.INFO, String.format(
+                        "Player %s appears to have %s ports open.",
+                        player.getName(),
+                        openPorts.size() == tcpPorts.size() ? "all" : "almost all"
+                ));
                 return;
             }
 
