@@ -76,5 +76,8 @@ proxyManager:
     # %3$s = service detected
     - "tempban %1$s 5m [MCPerf] You appear to be using a proxy/VPN. If this is incorrect, contact support."
   whitelist: # Usernames; must be all-lowercase
-    - lizchlops  # Father is an engineer; has DD-WRT + VPN; confirmed by talking to father
-    - kaichlops  # Also used by LizChlops
+    - lizchlops         # Father is an engineer; has DD-WRT + VPN; confirmed by talking to father
+    - kaichlops         # Also used by LizChlops
+    - crazyviolin       # Sibling of LizChlops
+    - xvinyl_scratchx   # /alts LizChlops
+    - xxrainbow_dashxx  # /alts LizChlops
