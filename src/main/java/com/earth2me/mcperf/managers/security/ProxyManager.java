@@ -41,18 +41,21 @@ public final class ProxyManager extends Manager {
     private static final List<Service> knownServices = Collections.unmodifiableList(Arrays.asList(new Service[] {
             new Service("WTFast", 1023, 1119),
             new Service("Hotspot Shield", 80, 1723, 5050, 9000),
-            new Service("PIA", 500, 1723),
+            new Service("PIA", 500, 1723, 8888),  // HTTP 8888, Location: https://www.privateinternetaccess.com/
 
             new Service("unidentified shell", 1723, 8099),
     }));
     // Order matters.
     @SuppressWarnings("RedundantArrayCreation")
     private static final List<Service> suspiciousServices = Collections.unmodifiableList(Arrays.asList(new Service[] {
+            // These are just too sensitive.  Too many shitty ISPs deploy routers with 1723 open.
+            /*
             new Service("generic PPTP #1", new Integer[] { 1723, 22 }, new Integer[] {
                     8888,  // DD-WRT
             }),
             new Service("generic PPTP #2", 1723, 53),
             new Service("generic PPTP #3", 1723, 443),
+            */
 
             new Service("generic SOCKS #1", 1080, 22),
             new Service("generic SOCKS #2", 1080, 53),
@@ -439,6 +442,8 @@ public final class ProxyManager extends Manager {
             this.includePorts = new HashSet<>(Arrays.asList(includePorts));
             this.excludePorts = Collections.emptySet();
         }
+
+        @SuppressWarnings("unused")
         private Service(String name, Integer[] includePorts, Integer[] excludePorts) {
             this.name = name;
             this.includePorts = new HashSet<>(Arrays.asList(includePorts));
