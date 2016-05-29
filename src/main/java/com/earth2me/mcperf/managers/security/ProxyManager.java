@@ -41,7 +41,7 @@ public final class ProxyManager extends Manager {
     private static final List<Service> knownServices = Collections.unmodifiableList(Arrays.asList(new Service[] {
             new Service("WTFast", 1023, 1119),
             new Service("Hotspot Shield", 80, 1723, 5050, 9000),
-            new Service("PIA", 500, 1723, 8888),  // HTTP 8888, Location: https://www.privateinternetaccess.com/
+            new Service("PIA", 22, 53, 80, 110, 443, 500, 1723, 8888),  // HTTP 8888, Location: https://www.privateinternetaccess.com/
 
             new Service("unidentified shell", 1723, 8099),
     }));
