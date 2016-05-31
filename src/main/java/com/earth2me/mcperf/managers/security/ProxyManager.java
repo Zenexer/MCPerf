@@ -43,7 +43,8 @@ public final class ProxyManager extends Manager {
             new Service("Hotspot Shield", 80, 1723, 5050, 9000),
             new Service("PIA", 22, 53, 80, 110, 443, 500, 1723, 8888),  // HTTP 8888, Location: https://www.privateinternetaccess.com/
             new Service("SoftEther#1", 443, 992, 5555),
-            new Service("SoftEther#2", new Integer[]{8888}, new Integer[]{22, 53, 80, 110, 443, 1723, 8080}),
+            // Too sensitive
+            //new Service("SoftEther#2", new Integer[]{8888}, new Integer[]{22, 53, 80, 110, 443, 1723, 8080}),
 
             new Service("unidentified shell", 1723, 8099),
     }));
