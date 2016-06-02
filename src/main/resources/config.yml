@@ -45,12 +45,18 @@ heuristicsManager:
   enabled: false
   debugEnabled: false
   verboseDebugEnabled: false
-  commands:
+  uncertainCommands:
     # %1$s = username
     # %2$s = reason
     # %3$s = IP address
     # %4$s = UUID, with hyphens
     - 'kick %1$s [MCPerf] Cheating: %2$s'
+  certainCommands:
+    # %1$s = username
+    # %2$s = reason
+    # %3$s = IP address
+    # %4$s = UUID, with hyphens
+    - 'tempban %1$s 3d [MCPerf] Cheating: %2$s'
 blacklistManager:
   enabled: false
   blocks: []

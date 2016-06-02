@@ -142,7 +142,11 @@ public final class HeuristicsManager extends Manager {
     @Getter
     @Setter
     @ConfigSetting
-    private List<String> commands = Collections.singletonList("kick %1$s [MCPerf] Cheating: %2$s");
+    private List<String> uncertainCommands = Collections.singletonList("kick %1$s [MCPerf] Cheating: %2$s");
+    @Getter
+    @Setter
+    @ConfigSetting
+    private List<String> certainCommands = Collections.singletonList("tempban %1$s 3d [MCPerf] Cheating: %2$s");
     @Getter
     @Setter
     @ConfigSetting
@@ -156,6 +160,7 @@ public final class HeuristicsManager extends Manager {
 
     private BukkitTask readyTask;
 
+    @SuppressWarnings("SpellCheckingInspection")
     public HeuristicsManager() {
         super("MTMbaGV1cmlzdGljcwo=");
     }
@@ -482,7 +487,7 @@ public final class HeuristicsManager extends Manager {
         }
     }
 
-    public void onCaughtCheating(Player player, String reason) {
+    public void onCaughtCheating(Player player, boolean certain, String reason) {
         if (!player.isOnline()) {
             return;
         }
@@ -503,12 +508,7 @@ public final class HeuristicsManager extends Manager {
             return;
         }
 
-        List<String> commands = getCommands();
-        if (commands != null) {
-            for (String command : commands) {
-                dispatchCommand(command, args);
-            }
-        }
+        dispatchCommands(certain ? getCertainCommands() : getUncertainCommands());
     }
 
     protected void dev(String message) {
@@ -784,7 +784,15 @@ public final class HeuristicsManager extends Manager {
             strike(count, debugReason, publicReason, false);
         }
 
+        private void strike(int count, boolean certain, String debugReason, String publicReason) {
+            strike(count, certain, debugReason, publicReason, false);
+        }
+
         private void strike(int count, String debugReason, String publicReason, boolean skipReset) {
+            strike(count, count >= 100, debugReason, publicReason, skipReset);
+        }
+
+        private void strike(int count, boolean certain, String debugReason, String publicReason, boolean skipReset) {
             Player player = getPlayer();
             if (player == null) {
                 return;
@@ -816,7 +824,8 @@ public final class HeuristicsManager extends Manager {
 
             if (strikes >= 1_000) {
                 info("STRUCK OUT: %s for %s", player.getName(), String.join(", ", strikeReasonsDebug));
-                onCaughtCheating(getPlayer(), "hack client: " + String.join(", ", strikeReasonsPublic));
+                // TODO: Determine certainty
+                onCaughtCheating(getPlayer(), certain, "hack client: " + String.join(", ", strikeReasonsPublic));
             }
         }
 
@@ -945,7 +954,7 @@ public final class HeuristicsManager extends Manager {
 
                         if (cumulativeAfterCancelled && blocksPerSecond > 30) {
                             info("Blink after cancelled movement %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                            onCaughtCheating(player, "blink/excessive lag");
+                            onCaughtCheating(player, false, "blink/excessive lag");
                         }
 
                         if (blocksPerSecond > 30 && (deltaEH > deltaH || deltaEV > deltaV)) {
@@ -958,25 +967,25 @@ public final class HeuristicsManager extends Manager {
 
                                 if (blocksPerSecond > 300) {
                                     info("Extremely fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                    strike(1000, "blink:extremely fast", "blink/excessive lag");
+                                    strike(1000, false, "blink:extremely fast", "blink/excessive lag");
                                 } else if (blocksPerSecond > 120) {
                                     if (suspicious) {
                                         info("Very fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                        strike(250, "blink:very fast", "blink/excessive lag");
+                                        strike(250, false, "blink:very fast", "blink/excessive lag");
                                     } else {
                                         // This seems to trigger a lot of false positives.
                                         debug("Very fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
                                     }
                                 } else if (blocksPerSecond > 80) {
                                     info("Fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                    strike(suspicious ? 250 : 100, "blink:fast", "blink/excessive lag");
+                                    strike(suspicious ? 250 : 100, false, "blink:fast", "blink/excessive lag");
                                 } else if (blocksPerSecond > 50) {
                                     if (suspicious) {
                                         info("Medium blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                        strike(100, "blink:medium", "blink/excessive lag");
+                                        strike(100, false, "blink:medium", "blink/excessive lag");
                                     } else {
                                         debug("Medium blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                        strike(0, "blink:medium", "blink/excessive lag");
+                                        strike(0, false, "blink:medium", "blink/excessive lag");
                                     }
                                 } else if (blocksPerSecond > 30) {
                                     debug("Short blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
@@ -1041,7 +1050,7 @@ public final class HeuristicsManager extends Manager {
                 }
 
                 if (yesCheatPlusCount >= 5) {  // Seems to happen exactly 7 times for flight, plus initial
-                    onCaughtCheating(player, type + " w/NCP evasion");
+                    onCaughtCheating(player, true, type + " w/NCP evasion");
                 }
             } else {
                 yesCheatPlusCount = 0;
@@ -1199,11 +1208,11 @@ public final class HeuristicsManager extends Manager {
                     }
 
                     if (timeInAir >= 600 && inAirScore >= 24) {  // TODO: Use packet count as well as time; helps prevent lag
-                        onCaughtCheating(player, "flight");
-                    } else if (timeInAir > 5_200 && deltaV4s >= 0 && accelV4s >= 0 && lastAirAccelV != null && lastAirAccelV >= 0 && deltaH4 > 0) {
+                        onCaughtCheating(player, false, "flight");
+                    } else if (timeInAir > 6_000 && deltaV4s >= 0 && accelV4s >= 0 && lastAirAccelV != null && lastAirAccelV >= 0 && deltaH4 > 0) {
                         info("In air too long: %s; %d ms", player.getName(), timeInAir);
                         // This seems to have a lot of false positives on kitpvp if the time is too short
-                        onCaughtCheating(player, "flight/floating");
+                        onCaughtCheating(player, false, "flight/floating");
                     }
 
                     if (inAirScore >= 2) {
@@ -1251,7 +1260,7 @@ public final class HeuristicsManager extends Manager {
 
                     if (material.isSolid()) {
                         info("NO-CLIP: %s; H:%.6f V:%.6f; (%s, %d, %d, %d); %s", player.getName(), deltaH, deltaV, world.getName(), x, iy, z, material.name());
-                        onCaughtCheating(player, "no-clip through " + material.name().toLowerCase().replace('_', ' '));
+                        onCaughtCheating(player, true, "no-clip through " + material.name().toLowerCase().replace('_', ' '));
                     }
                 }
             }
@@ -1291,9 +1300,10 @@ public final class HeuristicsManager extends Manager {
                 info("Suspicious horizontal speed (Wurst speed) for %s +160: %d; V: %.6f", player.getName(), suspiciousFlyHacks, deltaV);
                 strike(200, "speed:suspicious", "speed");
             } else if (deltaV4 == 1_0100) {  // Wurst with YesCheat+ enabled
+                // Previously had Huzuni here.  Is it both, or was one of them a copypasta error?
                 suspiciousFlyHacks += 240;
                 info("Wurst YesCheat+ upward movement for %s +240: %d; V: %.6f", player.getName(), suspiciousFlyHacks, deltaV);
-                strike(100, "flight:suspicious Huzuni", "flight");
+                strike(100, "flight:suspicious Wurst", "flight");
             } else if (deltaEV4s >= 2_0000) {
                 suspiciousFlyHacks += 240;
                 info("Very fast upwards movement for %s: %d; EV: %.6f", player.getName(), suspiciousFlyHacks, deltaEV);
@@ -1328,10 +1338,10 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (obviousFlyHacks >= 12) {
-                onCaughtCheating(player, "fly hacks");
+                onCaughtCheating(player, false, "fly hacks");
             }
             if (suspiciousFlyHacks >= 640) {
-                onCaughtCheating(player, "fly/speed hacks");
+                onCaughtCheating(player, false, "fly/speed hacks");
             }
 
             lastDeltaV4s = deltaV4s;
@@ -1503,6 +1513,7 @@ public final class HeuristicsManager extends Manager {
                 return 0;
             }
 
+            @SuppressWarnings("OptionalGetWithoutIsPresent")
             double distance = possibleDistances.stream().filter(n -> n > 0).map(Math::abs).min(Double::compare).get();
             Vector estimator = direction.clone().setY(0).normalize();
             distance -= Math.min(0.5, Math.min(Math.abs(estimator.getX()), Math.abs(estimator.getZ())) * 1.0);
@@ -1551,7 +1562,7 @@ public final class HeuristicsManager extends Manager {
                     hitDistance = null;
 
                     if (suspiciousAims >= 8) {
-                        onCaughtCheating(player, "aimbot (miss)");  // Particularly Kryptonite and Reflex
+                        onCaughtCheating(player, true, "aimbot (miss)");  // Particularly Kryptonite and Reflex
                     }
                 }
 
@@ -1663,7 +1674,7 @@ public final class HeuristicsManager extends Manager {
                     }
 
                     if (highSpeedAttacks >= 10) {
-                        onCaughtCheating(player, "killaura/speed attack/lag");
+                        onCaughtCheating(player, false, "killaura/speed attack/lag");
                     }
                 }
             }
@@ -1695,9 +1706,13 @@ public final class HeuristicsManager extends Manager {
             if (variancesV.size() > 10) {
                 variancesV.remove(0);
             }
+            @SuppressWarnings("OptionalGetWithoutIsPresent")
             double vMinH = variancesH.stream().min(Double::compare).get();
+            @SuppressWarnings("OptionalGetWithoutIsPresent")
             double vMaxH = variancesH.stream().max(Double::compare).get();
+            @SuppressWarnings("OptionalGetWithoutIsPresent")
             double vMinV = variancesV.stream().min(Double::compare).get();
+            @SuppressWarnings("OptionalGetWithoutIsPresent")
             double vMaxV = variancesV.stream().max(Double::compare).get();
             double vvH = vMaxH - vMinH;
             double vvV = vMaxV - vMinV;
@@ -1760,7 +1775,7 @@ public final class HeuristicsManager extends Manager {
             update(true);
 
             if (suspiciousAims >= 6) {
-                onCaughtCheating(player, "aimbot (hit)");  // Particularly Kryptonite and Reflex
+                onCaughtCheating(player, true, "aimbot (hit)");  // Particularly Kryptonite and Reflex
             }
 
             if (suspiciousHits >= 3) {
@@ -1768,7 +1783,7 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (farHits >= 48) {
-                onCaughtCheating(player, "reach hack/excessive lag");
+                onCaughtCheating(player, false, "reach hack/excessive lag");
             }
         }
 
@@ -1789,7 +1804,7 @@ public final class HeuristicsManager extends Manager {
             }
 
             if (blackmarks >= getMaxBlackmarks()) {
-                onCaughtCheating(player, "killaura/auto-click");
+                onCaughtCheating(player, true, "killaura/auto-click");
             }
         }
 
