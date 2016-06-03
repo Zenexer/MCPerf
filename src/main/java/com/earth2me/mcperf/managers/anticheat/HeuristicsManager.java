@@ -508,7 +508,7 @@ public final class HeuristicsManager extends Manager {
             return;
         }
 
-        dispatchCommands(certain ? getCertainCommands() : getUncertainCommands());
+        dispatchCommands(certain ? getCertainCommands() : getUncertainCommands(), args);
     }
 
     protected void dev(String message) {
