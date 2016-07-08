@@ -36,8 +36,21 @@ public abstract class Validator {
     }
 
     public boolean isValid(ItemStack stack, boolean strict) {
-        if (stack.getType() == Material.AIR) {
-            return true;
+        if (config.getBannedMaterials().contains(stack.getType())) {
+            onInvalid("banned material");
+            return false;
+        }
+
+        switch (stack.getType()) {
+            case AIR:
+                return true;
+
+            case TIPPED_ARROW:
+                if (config.isSplashPotionsBanned() || config.isLingeringPotionsBanned()) {
+                    onInvalid("tipped arrow (counts as splash/lingering potion)");
+                    return false;
+                }
+                break;
         }
 
         if (config.isZeroQuantityBanned() && stack.getAmount() == 0) {

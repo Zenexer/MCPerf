@@ -19,28 +19,42 @@ public class PotionMetaValidator extends MetaValidator<PotionMeta> {
     protected boolean isValidMeta(ItemStack stack, PotionMeta meta, boolean strict) {
         boolean checkNormal = getConfig().isPotionCheckingEnabled();
         boolean checkSplash = getConfig().isSplashPotionCheckingEnabled();
+        boolean checkLingering = getConfig().isLingeringPotionCheckingEnabled();
         boolean banSplash = getConfig().isSplashPotionsBanned();
+        boolean banLingering = getConfig().isLingeringPotionsBanned();
 
-        if (!checkNormal && !checkSplash && !banSplash) {
+        if (!checkNormal && !checkSplash && !banSplash && !checkLingering && !banLingering) {
             return true;
         }
 
-        short data = stack.getDurability();
-        boolean isSplashPotion = (data & 0x4000) != 0;
+        switch (stack.getType()) {
+            case POTION:
+                if (!checkNormal) {
+                    return true;
+                }
+                break;
 
-        if (isSplashPotion) {
-            if (banSplash) {
-                onInvalid("is splash potion");
-                return false;
-            } else if (!checkSplash) {
-                return true;
-            }
-        } else if (!checkNormal) {
-            return true;
+            case SPLASH_POTION:
+                if (banSplash) {
+                    onInvalid("banned splash potion");
+                    return false;
+                } else if (!checkSplash) {
+                    return true;
+                }
+                break;
+
+            case LINGERING_POTION:
+                if (banLingering) {
+                    onInvalid("banned lingering potion");
+                    return false;
+                } else if (!checkLingering) {
+                    return true;
+                }
+                break;
         }
 
         if (meta.hasCustomEffects()) {
-            onInvalid("%s potion has custom effects", isSplashPotion ? "splash" : "normal");
+            onInvalid("potion with banned custom effects");
             return false;
         }
 

@@ -17,10 +17,11 @@ public final class MonitorManager extends Manager {
     private static final int MAX_DISPLAY_RECIPIENTS = 30;
 
     public MonitorManager() {
+        //noinspection SpellCheckingInspection
         super("MTEbbW9uaXRvcgo=");
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerChat(@SuppressWarnings("deprecation") org.bukkit.event.player.PlayerChatEvent event) {
         if (!isEnabled()) {
             return;

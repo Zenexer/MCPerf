@@ -51,6 +51,7 @@ public abstract class BanIntegration {
     protected void onDisable() {
     }
 
+    @SuppressWarnings("unused")
     public void ban(Player player, String reason) {
         ban(player, null, null, reason);
     }

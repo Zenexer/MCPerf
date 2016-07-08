@@ -38,6 +38,8 @@ validityManager:
   potionCheckingEnabled: false
   splashPotionCheckingEnabled: false
   splashPotionsBanned: false
+  lingeringPotionCheckingEnabled: false
+  lingeringPotionsBanned: false
   zeroQuantityBanned: false
   bannedAttributeModifiers:
     - generic.maxHealth
@@ -46,6 +48,7 @@ validityManager:
     - horse.jumpStrength
   bannedTags:
     - www.wurst-client.tk
+  bannedMaterials: []
 screeningManager:
   enabled: false
   gracePeriod: 20  # Seconds
@@ -95,3 +98,16 @@ proxyManager:
     - crazyviolin       # Sibling of LizChlops
     - xvinyl_scratchx   # /alts LizChlops
     - xxrainbow_dashxx  # /alts LizChlops
+toxicityManager:
+  enabled: false
+  muteHours: 24  # 0 = disabled, -1 = forever; must be integer
+  minDelayMinutes: 0.5
+  maxDelayMinutes: 4.0
+  toxicText:  # These don't need to be complete words.  Must be lowercase!
+    - '卐'
+    - '\uFFFF'  # Used to evade filters
+  toxicWords:  # Need to be complete words.  Must be lowercase!
+    - nigger
+    - niggers
+    - nigga
+    - niggas

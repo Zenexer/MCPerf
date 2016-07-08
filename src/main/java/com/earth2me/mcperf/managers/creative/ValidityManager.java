@@ -1,9 +1,8 @@
 package com.earth2me.mcperf.managers.creative;
 
-import com.earth2me.mcperf.compat.Compat;
-import com.earth2me.mcperf.managers.Manager;
 import com.earth2me.mcperf.annotation.ContainsConfig;
 import com.earth2me.mcperf.annotation.Service;
+import com.earth2me.mcperf.managers.Manager;
 import com.earth2me.mcperf.managers.creative.validity.*;
 import lombok.Getter;
 import org.bukkit.GameMode;
@@ -21,10 +20,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerItemHeldEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
-import org.bukkit.event.player.PlayerPickupItemEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -46,11 +42,12 @@ public final class ValidityManager extends Manager {
     private final Validator genericValidator = new GenericValidator();
 
     {
-        registerMetaValidator(Compat.hasAttributeApi() ? new GenericMetaValidator_1_9() : new GenericMetaValidator_1_8());
+        registerMetaValidator(new GenericMetaValidator_1_9());
         registerMetaValidator(new PotionMetaValidator());
     }
 
     public ValidityManager() {
+        //noinspection SpellCheckingInspection
         super("MjIbdmFsaWRpdHkK");
     }
 
@@ -104,7 +101,7 @@ public final class ValidityManager extends Manager {
             Player player = sender.getPlayer();
             if (player.getGameMode() == GameMode.CREATIVE) {
                 // TODO: Kick ass
-                sendAlert("Caught %s with an invalid/modded stack of %s", player.getName(), stack.getType().name());
+                sendAlert("Caught %s with a modded/forbidden stack of %s", player.getName(), stack.getType().name());
             }
         }
 
@@ -189,8 +186,11 @@ public final class ValidityManager extends Manager {
                     builder.add(open.getBottomInventory());
                 }
 
-                if (!isValid(human.getItemInHand(), sender, false)) {
-                    human.setItemInHand(null);
+                if (!isValid(human.getInventory().getItemInMainHand(), sender, false)) {
+                    human.getInventory().setItemInMainHand(null);
+                }
+                if (!isValid(human.getInventory().getItemInOffHand(), sender, false)) {
+                    human.getInventory().setItemInOffHand(null);
                 }
                 if (!isValid(human.getItemOnCursor(), sender, false)) {
                     human.setItemOnCursor(null);
@@ -352,8 +352,11 @@ public final class ValidityManager extends Manager {
             validate(player.getInventory(), sender, false);
             validate(player.getEnderChest(), sender, false);
 
-            if (!isValid(player.getItemInHand(), sender, false)) {
-                player.setItemInHand(null);
+            if (!isValid(player.getInventory().getItemInMainHand(), sender, false)) {
+                player.getInventory().setItemInMainHand(null);
+            }
+            if (!isValid(player.getInventory().getItemInOffHand(), sender, false)) {
+                player.getInventory().setItemInOffHand(null);
             }
         } catch (Exception e) {
             e.printStackTrace();

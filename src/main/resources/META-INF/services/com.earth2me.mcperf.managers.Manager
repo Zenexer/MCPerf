@@ -8,4 +8,5 @@ com.earth2me.mcperf.managers.security.PluginMessageManager
 com.earth2me.mcperf.managers.security.ProxyManager
 com.earth2me.mcperf.managers.security.ScreeningManager
 com.earth2me.mcperf.managers.security.SecurityManager
+com.earth2me.mcperf.managers.security.ToxicityManager
 com.earth2me.mcperf.managers.util.MonitorManager

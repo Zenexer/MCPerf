@@ -68,6 +68,6 @@
 # https://sourceforge.net/p/proguard/bugs/566/
 -dontwarn                       java.lang.invoke.MethodHandle
 
--dontnote                       com.earth2me.mcperf.managers.creative.validity.GenericMetaValidator_1_8
+-dontnote                       com.earth2me.mcperf.managers.creative.validity.GenericMetaValidator_1_9
 -dontnote                       org.hamcrest.**
 -dontnote                       com.earth2me.mcperf.managers.creative.ValidityManager

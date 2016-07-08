@@ -1,6 +1,8 @@
 package com.earth2me.mcperf.managers.creative.validity;
 
 import lombok.Value;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.*;
@@ -26,9 +28,12 @@ public class ValidityConfiguration {
     boolean potionCheckingEnabled;
     boolean splashPotionCheckingEnabled;
     boolean splashPotionsBanned;
+    boolean lingeringPotionCheckingEnabled;
+    boolean lingeringPotionsBanned;
     boolean zeroQuantityBanned;
     Set<String> bannedAttributeModifiers;
     Set<String> bannedTags;
+    EnumSet<Material> bannedMaterials;
 
     public ValidityConfiguration(FileConfiguration config) {
         enabled = config.getBoolean("validityManager.enabled", false);
@@ -49,6 +54,8 @@ public class ValidityConfiguration {
         potionCheckingEnabled = config.getBoolean("validityManager.potionCheckingEnabled", false);
         splashPotionCheckingEnabled = config.getBoolean("validityManager.splashPotionCheckingEnabled", false);
         splashPotionsBanned = config.getBoolean("validityManager.splashPotionsBanned", false);
+        lingeringPotionCheckingEnabled = config.getBoolean("validityManager.lingeringPotionCheckingEnabled", false);
+        lingeringPotionsBanned = config.getBoolean("validityManager.lingeringPotionsBanned", false);
         zeroQuantityBanned = config.getBoolean("validityManager.zeroQuantityBanned", false);
 
         if (config.contains("validityManager.bannedAttributeModifiers")) {
@@ -78,6 +85,20 @@ public class ValidityConfiguration {
             bannedTags = new HashSet<>(Collections.singletonList(
                     "www.wurst-client.tk"
             ));
+        }
+
+        bannedMaterials = EnumSet.noneOf(Material.class);
+        if (config.contains("validityManager.bannedMaterials")) {
+            List<String> list = config.getStringList("validityManager.bannedMaterials");
+            if (list != null) {
+                for (String i : list) {
+                    try {
+                        bannedMaterials.add(Material.valueOf(i.toUpperCase(Locale.ROOT)));
+                    } catch (IllegalArgumentException ex) {
+                        Bukkit.getLogger().warning("[MCPerf] Invalid material type for config setting validityManager.bannedMaterials: " + i);
+                    }
+                }
+            }
         }
     }
 }

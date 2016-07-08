@@ -1,9 +1,15 @@
 package com.earth2me.mcperf;
 
-import org.bukkit.*;
+import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.Server;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 
-import java.util.logging.Level;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAmount;
 import java.util.stream.Stream;
 
 public class Util {
@@ -73,5 +79,9 @@ public class Util {
     public static String toString(Location location) {
         World world = location.getWorld();
         return String.format("([%s], %.2f, %.2f, %.2f)", world == null ? "?" : world.getName(), location.getX(), location.getY(), location.getZ());
+    }
+
+    public static long durationFromNow(TemporalAmount duration) {
+        return LocalDateTime.now(ZoneId.of("UTC")).plus(duration).toEpochSecond(ZoneOffset.UTC);
     }
 }

@@ -123,6 +123,11 @@ public final class EntityManager extends Manager {
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onLingeringPotionSplash(LingeringPotionSplashEvent event) {
+        onEntitySpawn(event);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onVehicleCreate(VehicleCreateEvent event) {
         onVehicle(event);
     }
