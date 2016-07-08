@@ -30,7 +30,7 @@
 	public !static void set?*(***);
 }
 # This doesn't work at the moment:
--keepclassmembers                                     @com.earth2me.mcperf.ob.ContainsConfig class * {
+-keepclassmembers                                     @com.earth2me.mcperf.annotation.ContainsConfig class * {
 	@com.earth2me.mcperf.config.ConfigSetting <fields>;
 	@com.earth2me.mcperf.config.ConfigSettingSetter <methods>;
 	public !static void set?*(***);
@@ -65,6 +65,9 @@
 
 ## General ##
 
--dontnote                       com.earth2me.mcperf.managers.creative.validity.MetaValidator
+# https://sourceforge.net/p/proguard/bugs/566/
+-dontwarn                       java.lang.invoke.MethodHandle
+
+-dontnote                       com.earth2me.mcperf.managers.creative.validity.GenericMetaValidator_1_8
 -dontnote                       org.hamcrest.**
 -dontnote                       com.earth2me.mcperf.managers.creative.ValidityManager

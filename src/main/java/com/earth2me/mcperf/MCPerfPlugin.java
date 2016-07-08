@@ -12,30 +12,15 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MCPerfPlugin extends JavaPlugin {
-    private static ServiceLoader<Manager> loader;
-    private static ClassLoader loaderContext;
-
     private final List<Manager> managers = new LinkedList<>();
     private final Set<Manager> registered = new HashSet<>();
-
-    private void initLoader() {
-        initLoader(getClassLoader());
-    }
-
-    private static synchronized void initLoader(ClassLoader classLoader) {
-        if (loader == null) {
-            loaderContext = classLoader;
-            loader = ServiceLoader.load(Manager.class, classLoader);
-        }
-    }
 
     private FileConfiguration ensureConfig() {
         try {
@@ -68,6 +53,8 @@ public class MCPerfPlugin extends JavaPlugin {
         FileConfiguration yaml = ensureConfig();
         ConfigHandler config = new ConfigHandler(getLogger());
 
+        managers.stream().forEach(Manager::disable);
+
         for (Manager manager : managers) {
             config.apply(yaml, manager);
         }
@@ -87,53 +74,72 @@ public class MCPerfPlugin extends JavaPlugin {
         Server server = getServer();
         Logger logger = getLogger();
 
-        initLoader();
-
         Tasks.init(server, this);
         BanIntegration.init(server, logger);
 
         managers.clear();
-        for (Manager manager : loader) {
-            manager.initService(server, logger, this);
-            managers.add(manager);
-        }
 
-        if (managers.isEmpty()) {
-            logger.log(Level.SEVERE, "No managers were found!");
-
-            String path = "META-INF/services/" + Manager.class.getName();
-            logger.log(Level.SEVERE, "Searched path: " + path);
-
+        Iterator<Manager> iterator = ServiceLoader.load(Manager.class, getClass().getClassLoader()).iterator();
+        boolean errors = false;
+        for (; ; ) {
             try {
-                Enumeration<URL> urls = loaderContext.getResources(path);
-
-                for (URL url; urls.hasMoreElements(); ) {
-                    url = urls.nextElement();
-                    logger.log(Level.SEVERE, "Resource URL: " + Objects.toString(url));
+                if (!iterator.hasNext()) {
+                    break;
                 }
-            } catch (IOException e) {
-                logger.log(Level.SEVERE, "Exception searching path", e);
+
+                Manager manager = iterator.next();
+                manager.initService(server, logger, this);
+                managers.add(manager);
+            } catch (ServiceConfigurationError e) {
+                errors = true;
+                getLogger().warning(String.format("Error while loading managers: %s", e.getMessage()));
             }
         }
 
-        /*managers.addAll(Arrays.asList(new Manager[]{
-                new SecurityManager(, server, logger, this),
-                new MonitorManager(, server, logger, this),
-                new EntityManager(, server, logger, this),
-                new ProjectileManager(, server, logger, this),
-                new ValidityManager(, server, logger, this),
-                new PluginMessageManager(, server, logger, this),
-                new ScreeningManager(, server, logger, this),
-                new HeuristicsManager(, server, logger, this),
-                new BlacklistManager(, server, logger, this),
-                new ProxyManager(, server, logger, this),
-        }));*/
+        if (managers.isEmpty()) {
+            errors = true;
+            logger.log(Level.SEVERE, "No managers were found!");
+        }
+
+        if (errors) {
+            logger.log(Level.SEVERE, "Errors were encountered while loading managers.  Running troubleshooter.");
+            troubleshootLoader();
+        }
 
         loadConfiguration();
 
         managers.forEach(Manager::init);
 
         super.onEnable();
+    }
+
+    private void troubleshootLoader() {
+        Logger logger = getLogger();
+        ClassLoader loaderContext = getClass().getClassLoader();
+
+        String path = "META-INF/services/" + Manager.class.getName();
+        logger.log(Level.SEVERE, "Class loader: " + loaderContext.getClass().getName());
+        logger.log(Level.SEVERE, "Searched path: " + path);
+
+        try {
+            Enumeration<URL> urls = loaderContext.getResources(path);
+
+            for (URL url; urls.hasMoreElements(); ) {
+                url = urls.nextElement();
+                logger.log(Level.SEVERE, "Resource URL: " + Objects.toString(url));
+
+                try (
+                        InputStream in = url.openStream();
+                        BufferedReader rx = new BufferedReader(new InputStreamReader(in, "utf-8"))
+                ) {
+                    for (String line; (line = rx.readLine()) != null; ) {
+                        logger.log(Level.SEVERE, "Service: " + line);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Exception searching path", e);
+        }
     }
 
     @Override

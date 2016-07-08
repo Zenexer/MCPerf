@@ -1,10 +1,11 @@
-com.earth2me.mcperf.managers.creative.BlacklistManager
-com.earth2me.mcperf.managers.performance.EntityManager
 com.earth2me.mcperf.managers.anticheat.HeuristicsManager
-com.earth2me.mcperf.managers.util.MonitorManager
-com.earth2me.mcperf.managers.security.PluginMessageManager
+com.earth2me.mcperf.managers.creative.BlacklistManager
+com.earth2me.mcperf.managers.creative.ValidityManager
+com.earth2me.mcperf.managers.performance.ChunkManager
+com.earth2me.mcperf.managers.performance.EntityManager
 com.earth2me.mcperf.managers.performance.ProjectileManager
+com.earth2me.mcperf.managers.security.PluginMessageManager
 com.earth2me.mcperf.managers.security.ProxyManager
 com.earth2me.mcperf.managers.security.ScreeningManager
 com.earth2me.mcperf.managers.security.SecurityManager
-com.earth2me.mcperf.managers.creative.ValidityManager
+com.earth2me.mcperf.managers.util.MonitorManager

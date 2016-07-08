@@ -5,8 +5,8 @@ import com.earth2me.mcperf.Util;
 import com.earth2me.mcperf.config.ConfigSetting;
 import com.earth2me.mcperf.config.ConfigSettingSetter;
 import com.earth2me.mcperf.config.Configurable;
-import com.earth2me.mcperf.ob.ContainsConfig;
 import com.earth2me.mcperf.util.concurrent.Tasks;
+import com.earth2me.mcperf.annotation.ContainsConfig;
 import lombok.Getter;
 import org.bukkit.Server;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -106,7 +106,7 @@ public abstract class Manager implements Listener, Configurable {
     }
 
     // Keep in mind this won't be called initially if enabled = true is passed to constructor.
-    public void enable() {
+    public final void enable() {
         if (enabled) {
             return;
         }
@@ -119,7 +119,7 @@ public abstract class Manager implements Listener, Configurable {
         }
     }
 
-    public void disable() {
+    public final void disable() {
         if (!enabled) {
             return;
         }

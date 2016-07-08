@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -51,7 +52,8 @@ public class ConfigHandler {
             return;
         }
 
-        String fullType = field.getGenericType().getTypeName();
+        Type genericType = field.getGenericType();
+        String fullType = genericType.getTypeName();
         String type, generic;
         int openBracket = fullType.indexOf('<');
         if (openBracket < 0) {
@@ -61,6 +63,18 @@ public class ConfigHandler {
             type = fullType.substring(0, openBracket);
             generic = fullType.substring(openBracket + 1, fullType.lastIndexOf('>'));
         }
+
+        Class<?> genericClass = null;
+        if (!generic.isEmpty()) {
+            try {
+                genericClass = Class.forName(generic);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(String.format("Unexpected setting generic parameter type %s derived from %s for config setting %s; class could not be found", generic, fullType, key), e);
+            }
+        }
+
+        // Despite the name, this must not use generics because Java is stupid.
+        Class genericEnumClass = genericClass != null && genericClass.isEnum() ? genericClass : null;
 
         Object value;
 
@@ -92,7 +106,9 @@ public class ConfigHandler {
             case "java.util.List":
             case "java.util.Set":
             case "java.util.HashSet":
+            case "java.util.EnumSet":
                 List<?> list;
+                EnumSet enumSet = null;
                 switch (generic) {
                     case "java.lang.String":
                         list = config.getStringList(key);
@@ -141,11 +157,39 @@ public class ConfigHandler {
                     }
 
                     default:
-                        throw new RuntimeException(String.format("Unexpected setting generic parameter type %s derived from %s for config setting %s", generic, fullType, key));
+                        if (genericEnumClass != null) {
+                            List<String> strings = config.getStringList(key);
+                            @SuppressWarnings("unchecked")
+                            List enumList = (List) strings.stream().<Enum<?>>map(k -> Enum.valueOf(genericEnumClass, k)).collect(Collectors.toList());
+                            list = enumList;
+
+                            try {
+                                enumSet = EnumSet.copyOf(enumList);
+                            } catch (Exception e) {
+                                enumSet = null;
+                            }
+                        } else {
+                            throw new RuntimeException(String.format("Unexpected setting generic parameter type %s derived from %s for config setting %s", generic, fullType, key));
+                        }
+                        break;
                 }
 
                 switch (type) {
                     case "java.util.Set":
+                        if (genericEnumClass == null) {
+                            value = new HashSet<>(list);
+                        } else {
+                            value = enumSet == null ? EnumSet.noneOf(genericEnumClass) : enumSet;
+                        }
+                        break;
+
+                    case "java.util.EnumSet":
+                        if (genericEnumClass == null) {
+                            throw new RuntimeException(String.format("Unexpected setting generic parameter type %s derived from %s for config setting %s; must extend Enum<?>", generic, fullType, key));
+                        }
+                        value = enumSet == null ? EnumSet.noneOf(genericEnumClass) : enumSet;
+                        break;
+
                     case "java.util.HashSet":
                         value = new HashSet<>(list);
                         break;

@@ -1,6 +1,7 @@
 package com.earth2me.mcperf.managers.creative.validity;
 
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 
 public class PotionMetaValidator extends MetaValidator<PotionMeta> {
@@ -10,11 +11,12 @@ public class PotionMetaValidator extends MetaValidator<PotionMeta> {
     }
 
     @Override
-    protected boolean isValidMeta(ItemStack stack, PotionMeta meta, boolean strict) {
-        if (!super.isValidMeta(stack, meta, strict)) {
-            return false;
-        }
+    public boolean isApplicable(ItemMeta meta) {
+        return meta instanceof PotionMeta;
+    }
 
+    @Override
+    protected boolean isValidMeta(ItemStack stack, PotionMeta meta, boolean strict) {
         boolean checkNormal = getConfig().isPotionCheckingEnabled();
         boolean checkSplash = getConfig().isSplashPotionCheckingEnabled();
         boolean banSplash = getConfig().isSplashPotionsBanned();

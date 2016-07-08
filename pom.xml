@@ -27,7 +27,7 @@
 	<repositories>
 		<repository>
 			<id>spigot-repo</id>
-			<url>http://hub.spigotmc.org/nexus/content/groups/public</url>
+			<url>https://hub.spigotmc.org/nexus/content/groups/public</url>
 		</repository>
 		<!--repository>
 			<id>ess-repo</id>
@@ -50,7 +50,7 @@
 		<dependency>
 			<groupId>org.spigotmc</groupId>
 			<artifactId>spigot-api</artifactId>
-			<version>1.8.8-R0.1-SNAPSHOT</version>
+			<version>LATEST</version>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>

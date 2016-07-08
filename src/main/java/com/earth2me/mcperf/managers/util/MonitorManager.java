@@ -1,8 +1,8 @@
 package com.earth2me.mcperf.managers.util;
 
 import com.earth2me.mcperf.managers.Manager;
-import com.earth2me.mcperf.ob.ContainsConfig;
-import com.earth2me.mcperf.ob.Service;
+import com.earth2me.mcperf.annotation.ContainsConfig;
+import com.earth2me.mcperf.annotation.Service;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
@@ -50,7 +50,7 @@ public final class MonitorManager extends Manager {
         println(format, recipCount, totalCount, world, sender, displayName, message, tag);
 
         if (recipCount > 0 && recipCount < totalCount && recipCount <= MAX_DISPLAY_RECIPIENTS) {
-            println("<<RECIPIENTS>> " + String.join(", ", recipients.stream().map(OfflinePlayer::getName).toArray(String[]::new)));
+            println("<<RECIPIENTS>> " + String.join(", ", recipients.stream().map(OfflinePlayer::getName).toArray(CharSequence[]::new)));
         }
     }
 }
