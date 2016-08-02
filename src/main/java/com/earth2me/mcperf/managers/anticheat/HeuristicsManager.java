@@ -954,7 +954,7 @@ public final class HeuristicsManager extends Manager {
 
                         if (cumulativeAfterCancelled && blocksPerSecond > 30) {
                             info("Blink after cancelled movement %s: %.2f over %.4f sec", player.getName(), blocksPerSecond, seconds);
-                            onCaughtCheating(player, false, "blink/excessive lag");
+                            strike(100, false, "blink:after cancelled", "blink/excessive lag");
                         }
 
                         if (blocksPerSecond > 30 && (deltaEH > deltaH || deltaEV > deltaV)) {
@@ -967,22 +967,22 @@ public final class HeuristicsManager extends Manager {
 
                                 if (blocksPerSecond > 300) {
                                     info("Extremely fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                    strike(1000, false, "blink:extremely fast", "blink/excessive lag");
+                                    strike(suspicious ? 100 : 0, false, "blink:extremely fast", "blink/excessive lag");
                                 } else if (blocksPerSecond > 120) {
                                     if (suspicious) {
                                         info("Very fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                        strike(250, false, "blink:very fast", "blink/excessive lag");
+                                        strike(suspicious ? 100 : 0, false, "blink:very fast", "blink/excessive lag");
                                     } else {
                                         // This seems to trigger a lot of false positives.
                                         debug("Very fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
                                     }
                                 } else if (blocksPerSecond > 80) {
                                     info("Fast blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                    strike(suspicious ? 250 : 100, false, "blink:fast", "blink/excessive lag");
+                                    strike(suspicious ? 100 : 0, false, "blink:fast", "blink/excessive lag");
                                 } else if (blocksPerSecond > 50) {
                                     if (suspicious) {
                                         info("Medium blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
-                                        strike(100, false, "blink:medium", "blink/excessive lag");
+                                        strike(suspicious ? 100 : 0, false, "blink:medium", "blink/excessive lag");
                                     } else {
                                         debug("Medium blink for %s: %.2f over %.4f sec", player.getName(), lastBlocksPerSecond, lastSeconds);
                                         strike(0, false, "blink:medium", "blink/excessive lag");
