@@ -1,6 +1,7 @@
 com.earth2me.mcperf.managers.anticheat.HeuristicsManager
 com.earth2me.mcperf.managers.creative.BlacklistManager
 com.earth2me.mcperf.managers.creative.ValidityManager
+com.earth2me.mcperf.managers.game.FactionsManager
 com.earth2me.mcperf.managers.performance.ChunkManager
 com.earth2me.mcperf.managers.performance.EntityManager
 com.earth2me.mcperf.managers.performance.ProjectileManager

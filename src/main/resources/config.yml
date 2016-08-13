@@ -111,3 +111,12 @@ toxicityManager:
     - niggers
     - nigga
     - niggas
+factionsManager:
+  enabled: false
+  bucketStackingEnabled: false  # Don't enable yet!
+  bucketStackSize: 64
+  bannedAnvilResults:
+    - ENCHANTED_BOOK
+    - SUGAR
+    - RAW_BEEF
+    - EMERALD
