@@ -7,6 +7,7 @@ import com.google.common.base.Objects;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Material;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.inventory.ClickType;
@@ -19,11 +20,13 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.RegisteredListener;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @ContainsConfig
 public class FactionsManager extends Manager {
@@ -38,10 +41,14 @@ public class FactionsManager extends Manager {
     @ConfigSetting
     @Getter
     @Setter
-    private EnumSet<Material> bannedAnvilResults;
+    private EnumSet<Material> bannedAnvilRenameMaterials;
+    @ConfigSetting
+    @Getter
+    @Setter
+    private boolean anvilRenameBlockedInsteadOfStripped = true;
 
     {
-        bannedAnvilResults = EnumSet.of(
+        bannedAnvilRenameMaterials = EnumSet.of(
                 Material.ENCHANTED_BOOK,
                 Material.SUGAR,
                 Material.RAW_BEEF,
@@ -56,7 +63,7 @@ public class FactionsManager extends Manager {
 
     @EventHandler(priority = EventPriority.NORMAL)
     private void onPrepareAnvil(PrepareAnvilEvent event) {
-        Set<Material> bannedAnvilResults = getBannedAnvilResults();
+        Set<Material> bannedAnvilResults = getBannedAnvilRenameMaterials();
 
         if (bannedAnvilResults == null || bannedAnvilResults.isEmpty()) {
             return;
@@ -64,11 +71,30 @@ public class FactionsManager extends Manager {
 
         ItemStack result = event.getResult();
 
-        if (result == null || !bannedAnvilResults.contains(result.getType())) {
+        if (result == null || !bannedAnvilResults.contains(result.getType()) || !result.hasItemMeta() || !result.getItemMeta().hasDisplayName()) {
             return;
         }
 
-        event.setResult(null);
+        boolean valid = Arrays.stream(event.getInventory().getContents())
+                .filter((i) -> i != null && i != result && i.hasItemMeta())
+                .anyMatch((i) ->
+                        i.getType() == result.getType()
+                        && result.getAmount() <= i.getAmount()
+                        && Objects.equal(result.getItemMeta().getDisplayName(), i.getItemMeta().getDisplayName())
+                );
+
+        if (!valid) {
+            try {
+                if (isAnvilRenameBlockedInsteadOfStripped()) {
+                    event.setResult(null);
+                } else {
+                    result.getItemMeta().setDisplayName(null);
+                }
+            } finally {
+                String name = String.join(" + ", event.getViewers().stream().map(HumanEntity::getName).collect(Collectors.toList()));
+                getLogger().log(Level.INFO, String.format("%s tried to rename %s", name, result.getType().name()));
+            }
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

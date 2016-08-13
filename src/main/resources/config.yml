@@ -115,8 +115,9 @@ factionsManager:
   enabled: false
   bucketStackingEnabled: false  # Don't enable yet!
   bucketStackSize: 64
-  bannedAnvilResults:
+  bannedAnvilRenameMaterials:
     - ENCHANTED_BOOK
     - SUGAR
     - RAW_BEEF
     - EMERALD
+  anvilRenameBlockedInsteadOfStripped: true  # true: block entire transaction; false: strip name
