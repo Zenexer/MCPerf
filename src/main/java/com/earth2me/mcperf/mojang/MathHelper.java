@@ -2,6 +2,9 @@ package com.earth2me.mcperf.mojang;
 
 /**
  * Property of Mojang.
+ * This is NOT subject to the license included with MCPerf.
+ * It's provided as a convenient reference, and isn't directly
+ * necessary for the use of MCPerf.
  *
  * @author Mojang
  */
